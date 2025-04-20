@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      {% block title %}Helwan University - Faculty of Engineering Exam System{%
+      endblock %}
+    </title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <!-- <h1>Faculty of Engineering - Helwan University</h1> -->
+        <h1 class="subtitle">Exam System</h1>
+        {% if session.role == 'teacher' %}
+        <nav>
+          <ul>
+            <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('create_exam') }}">Create Exam</a></li>
+            <li><a href="{{ url_for('all_grades') }}">All Grades</a></li>
+            <li><a href="{{ url_for('ip_management') }}">IP Management</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+          </ul>
+        </nav>
+        {% endif %}
+      </div>
+    </header>
+
+    <main>
+      <div class="container">{% block content %}{% endblock %}</div>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>&copy; 2025 Faculty of Engineering - Helwan University</p>
+      </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

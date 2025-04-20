@@ -1,0 +1,67 @@
+{% extends "base.html" %} {% block title %}All Student Grades - Exam System{%
+endblock %} {% block content %}
+<div class="grades-container">
+  <h2>All Student Grades</h2>
+
+  {% for exam in exams %}
+  <div class="exam-section">
+    <h3>{{ exam.title }}</h3>
+    <div class="export-actions">
+      <a
+        href="{{ url_for('export_grades_excel', exam_id=exam.id) }}"
+        class="button primary"
+      >
+        <i class="icon-download"></i> Export Grades to Excel
+      </a>
+    </div>
+    <table class="grades-table">
+      <thead>
+        <tr>
+          <th>Student Name</th>
+          <th>Student Number</th>
+          <th>Grade</th>
+          <th>Comments</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set exam_data = grades_by_exam[exam.id] %} {% if exam_data and
+        exam_data.students %} {% for student_number, data in
+        exam_data.students.items() %}
+        <tr>
+          <td>{{ data.student_name }}</td>
+          <td>{{ data.student_number }}</td>
+          <td>{{ data.grade }}</td>
+          <td>{{ data.comment }}</td>
+        </tr>
+        {% endfor %} {% else %}
+        <tr>
+          <td colspan="4">No graded submissions for this exam.</td>
+        </tr>
+        {% endif %} {% if exam.id in ungraded_students and
+        ungraded_students[exam.id] %}
+        <tr>
+          <td colspan="4" class="section-header">
+            Students with Ungraded Submissions
+          </td>
+        </tr>
+        {% for student in ungraded_students[exam.id] %}
+        <tr class="ungraded">
+          <td>{{ student.student_name }}</td>
+          <td>{{ student.student_number }}</td>
+          <td colspan="2">
+            <a
+              href="{{ url_for('grade_submission', submission_id=student.submission_id) }}"
+            >
+              View Submission
+            </a>
+          </td>
+        </tr>
+        {% endfor %} {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>No exams available.</p>
+  {% endfor %}
+</div>
+{% endblock %}

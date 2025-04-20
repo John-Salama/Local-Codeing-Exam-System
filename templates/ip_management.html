@@ -1,0 +1,63 @@
+{% extends "base.html" %} {% block title %}IP Management - Exam System{%
+endblock %} {% block content %}
+<div class="ip-management-container">
+  <h2>IP Management</h2>
+
+  <div class="back-link">
+    <a href="{{ url_for('teacher_dashboard') }}">Back to Dashboard</a>
+  </div>
+
+  <div class="ip-list">
+    <h3>IP Restrictions</h3>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>IP Address</th>
+          <th>Status</th>
+          <th>Blocked Since</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if ip_restrictions %} {% for ip in ip_restrictions %}
+        <tr>
+          <td>{{ ip.ip_address }}</td>
+          <td>
+            {% if ip.is_blocked %}
+            <span class="status blocked">Blocked</span>
+            {% elif ip.approved %}
+            <span class="status approved">Approved</span>
+            {% else %}
+            <span class="status neutral">Pending</span>
+            {% endif %}
+          </td>
+          <td>{{ ip.blocked_time if ip.blocked_time else 'N/A' }}</td>
+          <td>
+            <div class="action-links">
+              {% if ip.is_blocked %}
+              <a
+                href="{{ url_for('approve_ip', ip_id=ip.id) }}"
+                class="button small"
+                >Approve</a
+              >
+              {% else %}
+              <a
+                href="{{ url_for('block_ip', ip_id=ip.id) }}"
+                class="button small secondary"
+                >Block</a
+              >
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %} {% else %}
+        <tr>
+          <td colspan="4">No IP restrictions found.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

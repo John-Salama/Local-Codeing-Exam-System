@@ -1,0 +1,62 @@
+{% extends "base.html" %} {% block title %}Teacher Dashboard - Exam System{%
+endblock %} {% block content %}
+<div class="dashboard-container">
+  <h2>Teacher Dashboard</h2>
+
+  <div class="action-buttons">
+    <a href="{{ url_for('create_exam') }}" class="button primary"
+      >Create New Exam</a
+    >
+  </div>
+
+  <div class="exams-list">
+    <h3>Available Exams</h3>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Duration (min)</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if exams %} {% for exam in exams %}
+        <tr class="{{ 'active-exam' if exam.is_active else '' }}">
+          <td>{{ exam.title }}</td>
+          <td>{{ exam.duration }}</td>
+          <td>
+            {% if exam.is_active %}
+            <span class="status active">Active</span>
+            {% else %}
+            <span class="status inactive">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="action-links">
+              {% if not exam.is_active %}
+              <a
+                href="{{ url_for('activate_exam', exam_id=exam.id) }}"
+                class="button small"
+                >Activate</a
+              >
+              {% endif %}
+              <a
+                href="{{ url_for('view_submissions', exam_id=exam.id) }}"
+                class="button small secondary"
+                >View Submissions</a
+              >
+            </div>
+          </td>
+        </tr>
+        {% endfor %} {% else %}
+        <tr>
+          <td colspan="4">No exams available. Create your first exam.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

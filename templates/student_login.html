@@ -1,0 +1,30 @@
+{% extends "base.html" %} {% block title %}Student Login - Faculty of
+Engineering, Helwan University Exam System{% endblock %} {% block content %}
+<div class="login-container">
+  <div class="faculty-title">Student Login</div>
+
+  {% if error %}
+  <div class="error-message">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('student_login') }}">
+    <div class="form-group">
+      <label for="name">Full Name:</label>
+      <input type="text" id="name" name="name" required />
+    </div>
+
+    <div class="form-group">
+      <label for="student_number">Student Number:</label>
+      <input type="text" id="student_number" name="student_number" required />
+    </div>
+
+    <div class="form-group">
+      <button type="submit" class="button primary">Enter Exam</button>
+    </div>
+  </form>
+
+  <div class="teacher-login-link">
+    <a href="{{ url_for('teacher_login') }}">Teacher? Login here</a>
+  </div>
+</div>
+{% endblock %}

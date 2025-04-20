@@ -1,0 +1,784 @@
+/* Main CSS styles for Exam System - Helwan University, Faculty of Engineering Edition */
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Updated colors to match Helwan University's branding */
+  --primary-color: #183a64; /* Deep blue for Helwan Engineering */
+  --primary-hover: #0c2744;
+  --secondary-color: #b31b1b; /* Red accent for Helwan University */
+  --secondary-hover: #8e1515;
+  --dark-color: #1a1c23;
+  --light-color: #ffffff;
+  --grey-color: #edf2f7;
+  --grey-dark: #a0aec0;
+  --text-color: #2d3748;
+  --text-muted: #718096;
+  --success-color: #38b2ac;
+  --warning-color: #f6ad55;
+  --danger-color: #e53e3e;
+  --border-radius: 8px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --footer-height: 60px;
+  --header-height: 80px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: #f8fafc;
+  letter-spacing: 0.01em;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Header styles */
+header {
+  background-color: var(--primary-color);
+  color: var(--light-color);
+  padding: 1.25rem 0;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header h1 {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: var(--light-color);
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  gap: 1.5rem;
+}
+
+nav ul li {
+  margin-right: 0;
+}
+
+nav ul li a {
+  color: var(--light-color);
+  text-decoration: none;
+  font-weight: 500;
+  position: relative;
+  padding: 0.25rem 0;
+  transition: var(--transition);
+}
+
+nav ul li a:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background-color: var(--secondary-color);
+  transition: var(--transition);
+}
+
+nav ul li a:hover {
+  color: var(--grey-color);
+}
+
+nav ul li a:hover:after {
+  width: 100%;
+}
+
+/* Main content */
+main {
+  padding: 2.5rem 0;
+  flex: 1 0 auto; /* This allows main to grow and take available space */
+}
+
+/* Footer */
+footer {
+  background-color: var(--primary-color);
+  color: var(--grey-color);
+  padding: 1.5rem 0;
+  text-align: center;
+  flex-shrink: 0; /* Prevents footer from shrinking */
+  margin-top: auto; /* Pushes footer to the bottom if content is short */
+}
+
+/* Buttons */
+.button {
+  display: inline-block;
+  padding: 0.625rem 1.25rem;
+  background-color: var(--grey-dark);
+  color: var(--light-color);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.button:hover {
+  background-color: var(--text-muted);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.button.primary {
+  background-color: var(--primary-color);
+}
+
+.button.primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.button.secondary {
+  background-color: var(--secondary-color);
+}
+
+.button.secondary:hover {
+  background-color: var(--secondary-hover);
+}
+
+.button.small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+/* Forms */
+.form-group {
+  margin-bottom: 1.75rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--grey-dark);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  background-color: var(--light-color);
+  transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(24, 58, 100, 0.15);
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--grey-dark);
+  border-radius: var(--border-radius);
+  min-height: 120px;
+  font-size: 1rem;
+  font-family: inherit;
+  background-color: var(--light-color);
+  transition: var(--transition);
+  resize: vertical;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(24, 58, 100, 0.15);
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+/* Login screens */
+.login-container {
+  max-width: 500px;
+  margin: 3rem auto;
+  background-color: var(--light-color);
+  padding: 2.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-lg);
+  border-top: 5px solid var(--primary-color);
+}
+
+.login-container h2 {
+  margin-bottom: 2rem;
+  text-align: center;
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.helwan-logo {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.helwan-logo img {
+  max-width: 120px;
+  height: auto;
+}
+
+.faculty-title {
+  text-align: center;
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 2rem;
+  font-weight: 600;
+}
+
+.student-login-link,
+.teacher-login-link {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.student-login-link a,
+.teacher-login-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.student-login-link a:hover,
+.teacher-login-link a:hover {
+  text-decoration: underline;
+}
+
+/* Error messages */
+.error-message {
+  background-color: rgba(229, 62, 62, 0.1);
+  color: var(--danger-color);
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--danger-color);
+}
+
+/* Teacher dashboard */
+.dashboard-container {
+  background-color: var(--light-color);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+}
+
+.action-buttons {
+  margin-bottom: 2.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1.5rem;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.data-table th,
+.data-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.data-table th {
+  background-color: rgba(24, 58, 100, 0.1);
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr {
+  transition: var(--transition);
+}
+
+.data-table tbody tr:hover {
+  background-color: rgba(237, 242, 247, 0.5);
+}
+
+.active-exam {
+  background-color: rgba(24, 58, 100, 0.05);
+}
+
+.status {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status.active {
+  background-color: rgba(56, 178, 172, 0.15);
+  color: var (--success-color);
+}
+
+.status.inactive {
+  background-color: rgba(229, 62, 62, 0.15);
+  color: var(--danger-color);
+}
+
+.status.approved {
+  background-color: rgba(56, 178, 172, 0.15);
+  color: var(--success-color);
+}
+
+.status.blocked {
+  background-color: rgba(229, 62, 62, 0.15);
+  color: var(--danger-color);
+}
+
+.status.neutral {
+  background-color: rgba(113, 128, 150, 0.15);
+  color: var(--text-muted);
+}
+
+.action-links {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Create exam page */
+.question-item {
+  margin-bottom: 1.5rem;
+  position: relative;
+  background-color: var(--grey-color);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.question-item:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.remove-question-btn {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.remove-question-btn:hover {
+  background-color: var(--secondary-hover);
+  transform: rotate(90deg);
+}
+
+/* Exam page */
+.exam-container {
+  background-color: var(--light-color);
+  padding: 2.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+}
+
+.exam-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.timer-container {
+  font-size: 1.25rem;
+  font-weight: 600;
+  background-color: rgba(229, 62, 62, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+}
+
+#time-remaining {
+  color: var(--danger-color);
+  font-weight: 700;
+}
+
+.exam-content {
+  padding: 1rem 0;
+}
+
+/* Per-question panels */
+.question-panel {
+  background-color: var(--light-color);
+  border: 1px solid var(--grey-color);
+  border-radius: var(--border-radius);
+  margin-bottom: 2.5rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.question-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.question-header {
+  background-color: rgba(237, 242, 247, 0.7);
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.answer-editor {
+  padding: 1.25rem;
+}
+
+.question-number {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--primary-color);
+}
+
+.question-text {
+  margin-bottom: 1.25rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+/* Make each CodeMirror instance for answers have a reasonable height */
+.CodeMirror {
+  height: 220px !important;
+  border: 1px solid var(--grey-color);
+  font-size: 16px;
+  margin-bottom: 1.25rem;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.CodeMirror:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(24, 58, 100, 0.15);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  margin-top: 2.5rem;
+  gap: 1rem;
+}
+
+#status-message {
+  margin-left: 1rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* Submissions and grading */
+.back-link {
+  margin-bottom: 2rem;
+}
+
+.export-actions {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.back-link a {
+  color: var(--primary-color);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.back-link a:hover {
+  color: var(--primary-hover);
+}
+
+.back-link a:before {
+  content: "←";
+}
+
+.student-card {
+  background-color: var(--light-color);
+  padding: 2rem;
+  border-radius: var (--border-radius);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 2rem;
+  transition: var(--transition);
+}
+
+.student-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.student-info {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.tabs-header {
+  display: flex;
+  border-bottom: 1px solid var(--grey-color);
+  margin-bottom: 1.5rem;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.tab-button:hover {
+  color: var(--primary-color);
+}
+
+.tab-button.active {
+  border-bottom-color: var(--primary-color);
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.code-preview {
+  background-color: var(--grey-color);
+  padding: 1.25rem;
+  border-radius: var(--border-radius);
+  margin: 1.25rem 0;
+  overflow-x: auto;
+}
+
+.code-preview pre {
+  white-space: pre-wrap;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, Monaco, "Courier New",
+    monospace;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.grading-container {
+  background-color: var(--light-color);
+  padding: 2.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+}
+
+.grading-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.grading-form {
+  background-color: var(--grey-color);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+}
+
+/* Question answers in grading view */
+.question-answer-container {
+  border: 1px solid var(--grey-color);
+  border-radius: var(--border-radius);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.question-answer-header {
+  background-color: rgba(237, 242, 247, 0.7);
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.answer-content {
+  padding: 1.5rem;
+  background-color: var(--light-color);
+}
+
+/* Grades table styling */
+.grades-container {
+  margin: 2.5rem 0;
+}
+
+.exam-section {
+  margin-bottom: 2.5rem;
+  background-color: var(--light-color);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+}
+
+.exam-section:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.exam-section h3 {
+  color: var(--primary-color);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  border-bottom: 2px solid var(--grey-color);
+  padding-bottom: 0.75rem;
+}
+
+.grades-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1.5rem;
+  border-radius: var (--border-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.grades-table th,
+.grades-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.grades-table th {
+  background-color: var(--primary-color);
+  color: var(--light-color);
+  font-weight: 600;
+}
+
+.grades-table tr:last-child td {
+  border-bottom: none;
+}
+
+.grades-table tr:nth-child(even) {
+  background-color: rgba(237, 242, 247, 0.5);
+}
+
+.grades-table tbody tr {
+  transition: var(--transition);
+}
+
+.grades-table tbody tr:hover {
+  background-color: rgba(24, 58, 100, 0.05);
+}
+
+.section-header {
+  background-color: var(--grey-color) !important;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.75rem !important;
+  color: var(--text-color);
+}
+
+.ungraded {
+  background-color: rgba(229, 62, 62, 0.05) !important;
+}
+
+.ungraded a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.ungraded a:hover {
+  text-decoration: underline;
+  color: var(--primary-hover);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  header {
+    padding: 1rem 0;
+  }
+
+  nav ul {
+    flex-wrap: wrap;
+  }
+
+  .login-container {
+    padding: 1.5rem;
+  }
+
+  .exam-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .data-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .button {
+    padding: 0.5rem 1rem;
+  }
+}

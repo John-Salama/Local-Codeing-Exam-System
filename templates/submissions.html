@@ -1,0 +1,133 @@
+{% extends "base.html" %} {% block title %}Submissions - Exam System{% endblock
+%} {% block content %}
+<div class="submissions-container">
+  <h2>{{ exam.title }} - Submissions</h2>
+
+  <div class="back-link">
+    <a href="{{ url_for('teacher_dashboard') }}">Back to Dashboard</a>
+  </div>
+
+  <div class="export-actions">
+    <a
+      href="{{ url_for('export_grades_excel', exam_id=exam.id) }}"
+      class="button primary"
+    >
+      <i class="icon-download"></i> Export Grades to Excel
+    </a>
+  </div>
+
+  <div class="alert info-alert">
+    <p>
+      <strong>Note:</strong> Only the latest submission (Version with ✓) can be
+      graded. Previous versions are shown for reference only.
+    </p>
+  </div>
+
+  <div class="submissions-list">
+    {% if students %} {% for student in students %}
+    <div class="student-card">
+      <div class="student-info">
+        <h3>{{ student.student_name }}</h3>
+        <p>Student Number: {{ student.student_number }}</p>
+        <p>IP Address: {{ student.ip_address }}</p>
+      </div>
+
+      <div class="submissions-tabs">
+        <h4>Submissions</h4>
+
+        <div class="tabs-container">
+          {% set submissions = student_submissions[student.student_number] %} {%
+          if submissions %}
+          <div class="tabs-header">
+            {% for submission in submissions %}
+            <div
+              class="tab-button {% if submission.is_latest %}latest-version{% endif %}"
+              data-target="submission-{{ submission.id }}"
+            >
+              Version {{ submission.version }} {% if submission.is_latest %}✓{%
+              endif %}
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="tabs-content">
+            {% for submission in submissions %}
+            <div id="submission-{{ submission.id }}" class="tab-content">
+              <div class="submission-details">
+                <p>Submitted: {{ submission.submission_time }}</p>
+                {% if submission.is_latest %}
+                <p class="latest-badge">Latest Version - Can be graded</p>
+                {% else %}
+                <p class="older-badge">Previous Version - View only</p>
+                {% endif %}
+              </div>
+
+              <div class="code-preview">
+                <pre>{{ submission.code_content }}</pre>
+              </div>
+
+              <div class="grading-actions">
+                {% if submission.is_latest %}
+                <a
+                  href="{{ url_for('grade_submission', submission_id=submission.id) }}"
+                  class="button primary"
+                  >Grade Submission</a
+                >
+                {% else %}
+                <a
+                  href="{{ url_for('grade_submission', submission_id=submission.id) }}"
+                  class="button secondary"
+                  >View Submission</a
+                >
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p>No submissions found for this student.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %} {% else %}
+    <p>No submissions found for this exam.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Initialize tabs
+    const tabButtons = document.querySelectorAll(".tab-button");
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        const targetId = this.getAttribute("data-target");
+
+        // Hide all content in this tab group
+        const parent = this.closest(".tabs-container");
+        const contents = parent.querySelectorAll(".tab-content");
+        contents.forEach((content) => content.classList.remove("active"));
+
+        // Deactivate all buttons
+        const buttons = parent.querySelectorAll(".tab-button");
+        buttons.forEach((btn) => btn.classList.remove("active"));
+
+        // Activate clicked button and content
+        this.classList.add("active");
+        document.getElementById(targetId).classList.add("active");
+      });
+    });
+
+    // Activate first tab in each group by default
+    const tabContainers = document.querySelectorAll(".tabs-container");
+    tabContainers.forEach((container) => {
+      const firstButton = container.querySelector(".tab-button");
+      if (firstButton) {
+        firstButton.click();
+      }
+    });
+  });
+</script>
+{% endblock %}
