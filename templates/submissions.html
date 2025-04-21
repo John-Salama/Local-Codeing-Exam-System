@@ -14,6 +14,12 @@
     >
       <i class="icon-download"></i> Export Grades to Excel
     </a>
+    <a
+      href="{{ url_for('view_exam_models', exam_id=exam.id) }}"
+      class="button secondary"
+    >
+      <i class="icon-list"></i> View Exam Models
+    </a>
   </div>
 
   <div class="alert info-alert">
@@ -55,7 +61,16 @@
             <div id="submission-{{ submission.id }}" class="tab-content">
               <div class="submission-details">
                 <p>Submitted: {{ submission.submission_time }}</p>
-                {% if submission.is_latest %}
+
+                {% if submission.model_id %}
+                <p>
+                  <strong>Model:</strong>
+                  <span class="model-badge">
+                    {% set model = models.get(submission.model_id) %} {{
+                    model.model_name if model else 'Unknown' }}
+                  </span>
+                </p>
+                {% endif %} {% if submission.is_latest %}
                 <p class="latest-badge">Latest Version - Can be graded</p>
                 {% else %}
                 <p class="older-badge">Previous Version - View only</p>

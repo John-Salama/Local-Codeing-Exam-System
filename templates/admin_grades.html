@@ -13,12 +13,19 @@ endblock %} {% block content %}
       >
         <i class="icon-download"></i> Export Grades to Excel
       </a>
+      <a
+        href="{{ url_for('view_exam_models', exam_id=exam.id) }}"
+        class="button secondary"
+      >
+        <i class="icon-list"></i> View Exam Models
+      </a>
     </div>
     <table class="grades-table">
       <thead>
         <tr>
           <th>Student Name</th>
           <th>Student Number</th>
+          <th>Model</th>
           <th>Grade</th>
           <th>Comments</th>
         </tr>
@@ -30,17 +37,22 @@ endblock %} {% block content %}
         <tr>
           <td>{{ data.student_name }}</td>
           <td>{{ data.student_number }}</td>
+          <td>
+            {% if data.model_name %}
+            <span class="model-badge">{{ data.model_name }}</span>
+            {% else %} - {% endif %}
+          </td>
           <td>{{ data.grade }}</td>
           <td>{{ data.comment }}</td>
         </tr>
         {% endfor %} {% else %}
         <tr>
-          <td colspan="4">No graded submissions for this exam.</td>
+          <td colspan="5">No graded submissions for this exam.</td>
         </tr>
         {% endif %} {% if exam.id in ungraded_students and
         ungraded_students[exam.id] %}
         <tr>
-          <td colspan="4" class="section-header">
+          <td colspan="5" class="section-header">
             Students with Ungraded Submissions
           </td>
         </tr>
@@ -48,6 +60,11 @@ endblock %} {% block content %}
         <tr class="ungraded">
           <td>{{ student.student_name }}</td>
           <td>{{ student.student_number }}</td>
+          <td>
+            {% if student.model_name %}
+            <span class="model-badge">{{ student.model_name }}</span>
+            {% else %} - {% endif %}
+          </td>
           <td colspan="2">
             <a
               href="{{ url_for('grade_submission', submission_id=student.submission_id) }}"

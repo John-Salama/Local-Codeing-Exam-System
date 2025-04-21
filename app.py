@@ -12,6 +12,9 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+# Add chr function to Jinja2 environment
+app.jinja_env.globals.update(chr=chr)
+
 # Database setup
 DATABASE_PATH = 'database/exam_system.db'
 
@@ -43,13 +46,25 @@ def init_db():
         )
         ''')
 
+        # Create exam_models table for multiple exam variants
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS exam_models (
+            id INTEGER PRIMARY KEY,
+            exam_id INTEGER NOT NULL,
+            model_name TEXT NOT NULL,
+            FOREIGN KEY (exam_id) REFERENCES exams (id)
+        )
+        ''')
+
         # Create questions table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS questions (
             id INTEGER PRIMARY KEY,
             exam_id INTEGER,
+            model_id INTEGER,
             question_text TEXT NOT NULL,
-            FOREIGN KEY (exam_id) REFERENCES exams (id)
+            FOREIGN KEY (exam_id) REFERENCES exams (id),
+            FOREIGN KEY (model_id) REFERENCES exam_models (id)
         )
         ''')
 
@@ -61,12 +76,14 @@ def init_db():
             student_name TEXT NOT NULL,
             student_number TEXT NOT NULL,
             exam_id INTEGER,
+            model_id INTEGER,
             submission_time TIMESTAMP,
             ip_address TEXT,
             code_content TEXT,
             version INTEGER,
             FOREIGN KEY (student_id) REFERENCES users (id),
-            FOREIGN KEY (exam_id) REFERENCES exams (id)
+            FOREIGN KEY (exam_id) REFERENCES exams (id),
+            FOREIGN KEY (model_id) REFERENCES exam_models (id)
         )
         ''')
 
@@ -100,10 +117,12 @@ def init_db():
             student_name TEXT NOT NULL,
             student_number TEXT NOT NULL,
             exam_id INTEGER,
+            model_id INTEGER,
             start_time TIMESTAMP,
             end_time TIMESTAMP,
             ip_address TEXT,
-            FOREIGN KEY (exam_id) REFERENCES exams (id)
+            FOREIGN KEY (exam_id) REFERENCES exams (id),
+            FOREIGN KEY (model_id) REFERENCES exam_models (id)
         )
         ''')
 
@@ -222,6 +241,26 @@ def student_login():
             existing_session = cursor.fetchone()
 
             if not existing_session:
+                # Get available models for this exam
+                cursor.execute(
+                    "SELECT * FROM exam_models WHERE exam_id = ?",
+                    (exam['id'],)
+                )
+                available_models = cursor.fetchall()
+
+                if not available_models:
+                    # Create a default model if none exists (for backwards compatibility)
+                    cursor.execute(
+                        "INSERT INTO exam_models (exam_id, model_name) VALUES (?, ?)",
+                        (exam['id'], "Default Model")
+                    )
+                    model_id = cursor.lastrowid
+                else:
+                    # Randomly select a model from available models
+                    import random
+                    model = random.choice(available_models)
+                    model_id = model['id']
+
                 # Create new exam session
                 start_time = datetime.now()
                 end_time = start_time + timedelta(minutes=exam['duration'])
@@ -229,15 +268,17 @@ def student_login():
                 cursor.execute(
                     """
                     INSERT INTO exam_sessions 
-                    (student_name, student_number, exam_id, start_time, end_time, ip_address) 
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    (student_name, student_number, exam_id, model_id, start_time, end_time, ip_address) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (name, student_number, exam['id'],
+                    (name, student_number, exam['id'], model_id,
                      start_time, end_time, ip_address)
                 )
                 session_id = cursor.lastrowid
+                session['model_id'] = model_id
             else:
                 session_id = existing_session['id']
+                session['model_id'] = existing_session['model_id']
 
             session['student_name'] = name
             session['student_number'] = student_number
@@ -260,7 +301,7 @@ def student_login():
 
 @app.route('/take_exam')
 def take_exam():
-    if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session:
+    if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session or 'model_id' not in session:
         return redirect(url_for('student_login'))
 
     with sqlite3.connect(DATABASE_PATH) as conn:
@@ -272,9 +313,19 @@ def take_exam():
                        (session['exam_id'],))
         exam = cursor.fetchone()
 
-        # Get exam questions
-        cursor.execute("SELECT * FROM questions WHERE exam_id = ?",
-                       (session['exam_id'],))
+        # Get exam model
+        cursor.execute("SELECT * FROM exam_models WHERE id = ?",
+                       (session['model_id'],))
+        model = cursor.fetchone()
+
+        # Get questions for this specific model
+        cursor.execute("""
+            SELECT * FROM questions 
+            WHERE exam_id = ? AND model_id = ?
+            ORDER BY id
+            """,
+                       (session['exam_id'], session['model_id'])
+                       )
         questions = cursor.fetchall()
 
         # Get student's session info
@@ -293,10 +344,11 @@ def take_exam():
         cursor.execute(
             """
             SELECT * FROM submissions 
-            WHERE student_number = ? AND exam_id = ? 
+            WHERE student_number = ? AND exam_id = ? AND model_id = ?
             ORDER BY submission_time DESC LIMIT 1
             """,
-            (session['student_number'], session['exam_id'])
+            (session['student_number'],
+             session['exam_id'], session['model_id'])
         )
         submission = cursor.fetchone()
 
@@ -328,6 +380,7 @@ def take_exam():
         return render_template(
             'exam.html',
             exam=exam,
+            model=model,
             questions=questions,
             remaining_seconds=int(remaining_seconds),
             prev_code=prev_code,
@@ -339,7 +392,7 @@ def take_exam():
 
 @app.route('/api/auto_save', methods=['POST'])
 def auto_save():
-    if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session:
+    if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session or 'model_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
 
     answers = request.json.get('answers', {})  # Get answers for each question
@@ -355,9 +408,10 @@ def auto_save():
         cursor.execute(
             """
             SELECT MAX(version) as max_version FROM submissions 
-            WHERE student_number = ? AND exam_id = ?
+            WHERE student_number = ? AND exam_id = ? AND model_id = ?
             """,
-            (session['student_number'], session['exam_id'])
+            (session['student_number'],
+             session['exam_id'], session['model_id'])
         )
         result = cursor.fetchone()
         new_version = (result[0] or 0) + 1
@@ -367,23 +421,25 @@ def auto_save():
             cursor.execute(
                 """
                 DELETE FROM submissions 
-                WHERE student_number = ? AND exam_id = ? 
+                WHERE student_number = ? AND exam_id = ? AND model_id = ?
                 ORDER BY submission_time ASC LIMIT 1
                 """,
-                (session['student_number'], session['exam_id'])
+                (session['student_number'],
+                 session['exam_id'], session['model_id'])
             )
 
         # Insert new submission
         cursor.execute(
             """
             INSERT INTO submissions 
-            (student_name, student_number, exam_id, submission_time, ip_address, code_content, version) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (student_name, student_number, exam_id, model_id, submission_time, ip_address, code_content, version) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session['student_name'],
                 session['student_number'],
                 session['exam_id'],
+                session['model_id'],
                 datetime.now(),
                 ip_address,
                 combined_code,
@@ -411,7 +467,7 @@ def auto_save():
 
 @app.route('/api/submit', methods=['POST'])
 def submit_exam():
-    if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session:
+    if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session or 'model_id' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
 
     answers = request.json.get('answers', {})  # Get answers for each question
@@ -426,9 +482,10 @@ def submit_exam():
         cursor.execute(
             """
             SELECT MAX(version) as max_version FROM submissions 
-            WHERE student_number = ? AND exam_id = ?
+            WHERE student_number = ? AND exam_id = ? AND model_id = ?
             """,
-            (session['student_number'], session['exam_id'])
+            (session['student_number'],
+             session['exam_id'], session['model_id'])
         )
         result = cursor.fetchone()
         new_version = (result[0] or 0) + 1
@@ -437,13 +494,14 @@ def submit_exam():
         cursor.execute(
             """
             INSERT INTO submissions 
-            (student_name, student_number, exam_id, submission_time, ip_address, code_content, version) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (student_name, student_number, exam_id, model_id, submission_time, ip_address, code_content, version) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session['student_name'],
                 session['student_number'],
                 session['exam_id'],
+                session['model_id'],
                 datetime.now(),
                 ip_address,
                 combined_code,
@@ -477,6 +535,7 @@ def submit_exam():
         session.pop('student_name', None)
         session.pop('student_number', None)
         session.pop('exam_id', None)
+        session.pop('model_id', None)
         session.pop('session_id', None)
 
         conn.commit()
@@ -509,7 +568,7 @@ def create_exam():
     if request.method == 'POST':
         title = request.form['title']
         duration = int(request.form['duration'])
-        questions = request.form.getlist('question')
+        model_count = int(request.form.get('model_count', 1))
 
         with sqlite3.connect(DATABASE_PATH) as conn:
             cursor = conn.cursor()
@@ -521,19 +580,127 @@ def create_exam():
             )
             exam_id = cursor.lastrowid
 
-            # Insert questions
-            for question in questions:
-                if question.strip():
-                    cursor.execute(
-                        "INSERT INTO questions (exam_id, question_text) VALUES (?, ?)",
-                        (exam_id, question)
-                    )
+            # Create default model (Model A) if no specific models specified
+            if model_count == 1:
+                cursor.execute(
+                    "INSERT INTO exam_models (exam_id, model_name) VALUES (?, ?)",
+                    (exam_id, "Model A")
+                )
+                model_id = cursor.lastrowid
+
+                # Insert questions for default model
+                for question in request.form.getlist('question'):
+                    if question.strip():
+                        cursor.execute(
+                            "INSERT INTO questions (exam_id, model_id, question_text) VALUES (?, ?, ?)",
+                            (exam_id, model_id, question)
+                        )
+
+            conn.commit()
+
+        if model_count > 1:
+            # If multiple models specified, redirect to the model creation page
+            return redirect(url_for('create_exam_models', exam_id=exam_id, model_count=model_count))
+
+        return redirect(url_for('teacher_dashboard'))
+
+    return render_template('create_exam.html')
+
+# Create exam models route
+
+
+@app.route('/teacher/create_exam_models/<int:exam_id>', methods=['GET', 'POST'])
+def create_exam_models(exam_id):
+    if 'role' not in session or session['role'] != 'teacher':
+        return redirect(url_for('login'))
+
+    model_count = request.args.get(
+        'model_count', type=int) or request.form.get('model_count', type=int)
+
+    if not model_count or model_count < 1:
+        model_count = 1
+
+    if request.method == 'POST':
+        with sqlite3.connect(DATABASE_PATH) as conn:
+            cursor = conn.cursor()
+
+            # Process each model's questions
+            for model_num in range(1, model_count + 1):
+                # A, B, C, ...
+                model_name = request.form.get(
+                    f'model_name_{model_num}', f'Model {chr(64 + model_num)}')
+
+                # Insert model
+                cursor.execute(
+                    "INSERT INTO exam_models (exam_id, model_name) VALUES (?, ?)",
+                    (exam_id, model_name)
+                )
+                model_id = cursor.lastrowid
+
+                # Insert questions for this model
+                question_prefix = f'question_{model_num}_'
+                for key, value in request.form.items():
+                    if key.startswith(question_prefix) and value.strip():
+                        question_index = key[len(question_prefix):]
+                        cursor.execute(
+                            "INSERT INTO questions (exam_id, model_id, question_text) VALUES (?, ?, ?)",
+                            (exam_id, model_id, value)
+                        )
 
             conn.commit()
 
         return redirect(url_for('teacher_dashboard'))
 
-    return render_template('create_exam.html')
+    # For GET request, show form to create models
+    with sqlite3.connect(DATABASE_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM exams WHERE id = ?", (exam_id,))
+        exam = cursor.fetchone()
+
+        if not exam:
+            return redirect(url_for('teacher_dashboard'))
+
+    return render_template('create_exam_models.html', exam_id=exam_id, model_count=model_count)
+
+# View exam models route
+
+
+@app.route('/teacher/exam_models/<int:exam_id>')
+def view_exam_models(exam_id):
+    if 'role' not in session or session['role'] != 'teacher':
+        return redirect(url_for('login'))
+
+    with sqlite3.connect(DATABASE_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Get exam details
+        cursor.execute("SELECT * FROM exams WHERE id = ?", (exam_id,))
+        exam = cursor.fetchone()
+
+        if not exam:
+            return redirect(url_for('teacher_dashboard'))
+
+        # Get all models for this exam
+        cursor.execute(
+            "SELECT * FROM exam_models WHERE exam_id = ? ORDER BY id", (exam_id,))
+        models = cursor.fetchall()
+
+        # Get questions for each model
+        model_questions = {}
+        for model in models:
+            cursor.execute(
+                "SELECT * FROM questions WHERE exam_id = ? AND model_id = ? ORDER BY id",
+                (exam_id, model['id'])
+            )
+            model_questions[model['id']] = cursor.fetchall()
+
+    return render_template(
+        'view_exam_models.html',
+        exam=exam,
+        models=models,
+        model_questions=model_questions
+    )
 
 # Activate exam route
 
@@ -572,6 +739,14 @@ def view_submissions(exam_id):
         # Get exam details
         cursor.execute("SELECT * FROM exams WHERE id = ?", (exam_id,))
         exam = cursor.fetchone()
+
+        # Get all models for this exam
+        cursor.execute(
+            "SELECT * FROM exam_models WHERE exam_id = ?", (exam_id,))
+        exam_models = cursor.fetchall()
+
+        # Convert to dictionary for easy lookup in template
+        models = {model['id']: model for model in exam_models}
 
         # Get all unique students who submitted
         cursor.execute(
@@ -618,7 +793,8 @@ def view_submissions(exam_id):
         'submissions.html',
         exam=exam,
         students=students,
-        student_submissions=student_submissions
+        student_submissions=student_submissions,
+        models=models
     )
 
 # Grade submission route
@@ -641,6 +817,11 @@ def grade_submission(submission_id):
         if not submission:
             return redirect(url_for('teacher_dashboard'))
 
+        # Get the model info for this submission
+        cursor.execute("SELECT * FROM exam_models WHERE id = ?",
+                       (submission['model_id'],))
+        model = cursor.fetchone()
+
         # Check if this is the latest submission for this student/exam
         cursor.execute(
             """
@@ -660,6 +841,7 @@ def grade_submission(submission_id):
                 return render_template(
                     'grade.html',
                     submission=submission,
+                    model=model,
                     error_message="Only the latest submission can be graded. This is not the latest submission.",
                     is_latest=is_latest,
                     can_grade=False
@@ -701,9 +883,15 @@ def grade_submission(submission_id):
             "SELECT * FROM grades WHERE submission_id = ?", (submission_id,))
         grade = cursor.fetchone()
 
-        # Get exam questions
-        cursor.execute("SELECT * FROM questions WHERE exam_id = ?",
-                       (submission['exam_id'],))
+        # Get exam questions for this specific model
+        cursor.execute(
+            """
+            SELECT * FROM questions 
+            WHERE exam_id = ? AND model_id = ?
+            ORDER BY id
+            """,
+            (submission['exam_id'], submission['model_id'])
+        )
         questions = cursor.fetchall()
 
         # Get individual question answers
@@ -724,6 +912,7 @@ def grade_submission(submission_id):
     return render_template(
         'grade.html',
         submission=submission,
+        model=model,
         grade=grade,
         questions=questions,
         question_answers=question_answers,
@@ -852,16 +1041,27 @@ def all_grades():
         )
         students = cursor.fetchall()
 
+        # Get all exam models
+        cursor.execute("SELECT * FROM exam_models")
+        exam_models_rows = cursor.fetchall()
+
+        # Convert to dictionary for easy lookup
+        exam_models = {}
+        for model in exam_models_rows:
+            if model['exam_id'] not in exam_models:
+                exam_models[model['exam_id']] = {}
+            exam_models[model['exam_id']][model['id']] = model['model_name']
+
         # Get grades only from the latest submissions for each student/exam
         cursor.execute(
             """
             WITH latest_submissions AS (
-                SELECT s.id, s.student_number, s.exam_id, s.student_name,
+                SELECT s.id, s.student_number, s.exam_id, s.student_name, s.model_id,
                        ROW_NUMBER() OVER (PARTITION BY s.student_number, s.exam_id 
                                          ORDER BY s.submission_time DESC) AS submission_rank
                 FROM submissions s
             )
-            SELECT g.*, ls.student_name, ls.student_number, ls.exam_id, e.title as exam_title
+            SELECT g.*, ls.student_name, ls.student_number, ls.exam_id, ls.model_id, e.title as exam_title
             FROM grades g
             JOIN latest_submissions ls ON g.submission_id = ls.id AND ls.submission_rank = 1
             JOIN exams e ON ls.exam_id = e.id
@@ -881,6 +1081,12 @@ def all_grades():
         for grade in all_grades:
             exam_id = grade['exam_id']
             student_number = grade['student_number']
+            model_id = grade['model_id']
+
+            # Get model name if available
+            model_name = None
+            if exam_id in exam_models and model_id in exam_models[exam_id]:
+                model_name = exam_models[exam_id][model_id]
 
             if exam_id in grades_by_exam:
                 if student_number not in grades_by_exam[exam_id]['students']:
@@ -888,7 +1094,8 @@ def all_grades():
                         'student_name': grade['student_name'],
                         'student_number': student_number,
                         'grade': grade['mark'],
-                        'comment': grade['comment']
+                        'comment': grade['comment'],
+                        'model_name': model_name
                     }
 
         # Get list of students who haven't been graded for each exam (only check latest submissions)
@@ -898,13 +1105,13 @@ def all_grades():
             cursor.execute(
                 """
                 WITH latest_submissions AS (
-                    SELECT s.id, s.student_name, s.student_number,
+                    SELECT s.id, s.student_name, s.student_number, s.model_id,
                            ROW_NUMBER() OVER (PARTITION BY s.student_number, s.exam_id 
                                              ORDER BY s.submission_time DESC) AS submission_rank
                     FROM submissions s
                     WHERE s.exam_id = ?
                 )
-                SELECT ls.id as submission_id, ls.student_name, ls.student_number
+                SELECT ls.id as submission_id, ls.student_name, ls.student_number, ls.model_id
                 FROM latest_submissions ls
                 LEFT JOIN grades g ON g.submission_id = ls.id
                 WHERE ls.submission_rank = 1 AND g.id IS NULL
@@ -912,14 +1119,31 @@ def all_grades():
                 """,
                 (exam['id'],)
             )
-            ungraded_students[exam['id']] = cursor.fetchall()
+            ungraded_rows = cursor.fetchall()
+
+            # Add model information to ungraded students
+            ungraded_with_models = []
+            for student in ungraded_rows:
+                student_dict = dict(student)
+
+                # Get model name if available
+                model_name = None
+                model_id = student['model_id']
+                if exam['id'] in exam_models and model_id in exam_models[exam['id']]:
+                    model_name = exam_models[exam['id']][model_id]
+
+                student_dict['model_name'] = model_name
+                ungraded_with_models.append(student_dict)
+
+            ungraded_students[exam['id']] = ungraded_with_models
 
     return render_template(
         'admin_grades.html',
         exams=exams,
         students=students,
         grades_by_exam=grades_by_exam,
-        ungraded_students=ungraded_students
+        ungraded_students=ungraded_students,
+        exam_models=exam_models
     )
 
 # Export grades to Excel route

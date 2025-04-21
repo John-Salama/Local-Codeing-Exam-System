@@ -1,121 +1,131 @@
-{% extends "base.html" %}
-
-{% block title %}Grade Submission - Exam System{% endblock %}
-
-{% block head %}
+{% extends "base.html" %} {% block title %}Grade Submission - Exam System{%
+endblock %} {% block head %}
 <!-- CodeMirror - for syntax highlighting in view mode -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/theme/monokai.min.css">
-{% endblock %}
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/theme/monokai.min.css"
+/>
+{% endblock %} {% block content %}
+<div class="grade-container">
+  <h2>Grade Submission</h2>
 
-{% block content %}
-<div class="grading-container">
-    <h2>{% if is_latest %}Grade Submission{% else %}View Submission{% endif %}</h2>
-    
-    <div class="back-link">
-        <a href="{{ url_for('view_submissions', exam_id=submission.exam_id) }}">Back to Submissions</a>
+  <div class="student-info">
+    <div class="info-row">
+      <div class="info-label">Student:</div>
+      <div class="info-value">{{ submission.student_name }}</div>
     </div>
-    
-    <div class="submission-info">
-        <div class="student-info">
-            <h3>{{ submission.student_name }}</h3>
-            <p>Student Number: {{ submission.student_number }}</p>
-            <p>IP Address: {{ submission.ip_address }}</p>
-            <p>Submission Time: {{ submission.submission_time }}</p>
-            <p>Version: {{ submission.version }}</p>
-            {% if is_latest %}
-            <p class="submission-status latest">Latest Version - Can be graded</p>
-            {% else %}
-            <p class="submission-status older">Previous Version - View only</p>
-            {% endif %}
-        </div>
+    <div class="info-row">
+      <div class="info-label">Student Number:</div>
+      <div class="info-value">{{ submission.student_number }}</div>
     </div>
-    
-    {% if error_message %}
-    <div class="alert error-alert">
-        <p><strong>Error:</strong> {{ error_message }}</p>
+    <div class="info-row">
+      <div class="info-label">Submission Time:</div>
+      <div class="info-value">{{ submission.submission_time }}</div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">IP Address:</div>
+      <div class="info-value">{{ submission.ip_address }}</div>
+    </div>
+    {% if model %}
+    <div class="info-row">
+      <div class="info-label">Exam Model:</div>
+      <div class="info-value model-badge">{{ model.model_name }}</div>
     </div>
     {% endif %}
-    
-    <div class="grading-content">
-        {% for question in questions %}
-        <div class="question-answer-container">
-            <div class="question-answer-header">
-                <div class="question-number">Question {{ loop.index }}</div>
-                <div class="question-text">{{ question.question_text }}</div>
-            </div>
-            <div class="answer-content">
-                {% set question_id = question.id %}
-                {% if question_id|string in question_answers.keys() or question_id in question_answers.keys() %}
-                <textarea id="code-display-{{ question_id }}" class="code-display">{{ question_answers[question_id|string] if question_id|string in question_answers.keys() else question_answers[question_id] }}</textarea>
-                {% else %}
-                <p><em>No answer provided for this question.</em></p>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        
-        {% if can_grade %}
-        <div class="grading-form">
-            <h3>Grade Submission</h3>
-            
-            <form method="POST" action="{{ url_for('grade_submission', submission_id=submission.id) }}">
-                <div class="form-group">
-                    <label for="mark">Mark:</label>
-                    <input type="number" id="mark" name="mark" min="0" max="100" step="0.5" value="{{ grade.mark if grade else '' }}" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="comment">Comment:</label>
-                    <select id="comment" name="comment" required>
-                        <option value="">Select a comment</option>
-                        <option value="Excellent work!" {{ 'selected' if grade and grade.comment == 'Excellent work!' else '' }}>Excellent work!</option>
-                        <option value="Good effort, some improvements needed" {{ 'selected' if grade and grade.comment == 'Good effort, some improvements needed' else '' }}>Good effort, some improvements needed</option>
-                        <option value="Satisfactory, but has errors" {{ 'selected' if grade and grade.comment == 'Satisfactory, but has errors' else '' }}>Satisfactory, but has errors</option>
-                        <option value="Needs significant improvement" {{ 'selected' if grade and grade.comment == 'Needs significant improvement' else '' }}>Needs significant improvement</option>
-                        <option value="Incorrect solution" {{ 'selected' if grade and grade.comment == 'Incorrect solution' else '' }}>Incorrect solution</option>
-                    </select>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="button primary">Save Grade</button>
-                </div>
-            </form>
-        </div>
-        {% else %}
-        <div class="grading-form disabled">
-            <div class="alert warning-alert">
-                <h3>Cannot Grade This Version</h3>
-                <p>Only the latest submission version can be graded. This is an older version shown for reference only.</p>
-                <p>Please return to the <a href="{{ url_for('view_submissions', exam_id=submission.exam_id) }}">submissions page</a> and select the latest version to grade.</p>
-            </div>
-            
-            {% if grade %}
-            <div class="previous-grade">
-                <h4>Previous Grade (Not Current)</h4>
-                <p>Mark: {{ grade.mark }}</p>
-                <p>Comment: {{ grade.comment }}</p>
-                <p><em>Note: This grade may no longer be valid as it applies to a previous submission version.</em></p>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
+    <div class="info-row version-info">
+      <div class="info-label">Version:</div>
+      <div class="info-value">{{ submission.version }}</div>
+      {% if not is_latest %}
+      <div class="not-latest-warning">
+        This is not the latest submission. Only the latest submission can be
+        graded.
+      </div>
+      {% endif %}
     </div>
-</div>
-{% endblock %}
+  </div>
 
-{% block scripts %}
+  {% if error_message %}
+  <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <div class="question-answers">
+    <h3>Answers</h3>
+    {% for question in questions %}
+    <div class="question-answer-panel">
+      <div class="question-text">
+        <strong>Question {{ loop.index }}:</strong> {{ question.question_text }}
+      </div>
+      <div class="answer-content">
+        <pre class="code-block">
+{{ question_answers.get(question.id, 'No answer provided') }}</pre
+        >
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if can_grade %}
+  <div class="grading-section">
+    <h3>Grading</h3>
+
+    <form method="POST">
+      <div class="form-group">
+        <label for="mark">Mark:</label>
+        <input
+          type="number"
+          id="mark"
+          name="mark"
+          step="0.5"
+          min="0"
+          max="100"
+          value="{{ grade.mark if grade else '' }}"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="comment">Comment:</label>
+        <textarea id="comment" name="comment" rows="4">
+{{ grade.comment if grade else '' }}</textarea
+        >
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="button primary">Submit Grade</button>
+        <a
+          href="{{ url_for('view_submissions', exam_id=submission.exam_id) }}"
+          class="button"
+          >Back</a
+        >
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <div class="form-actions">
+    <a
+      href="{{ url_for('view_submissions', exam_id=submission.exam_id) }}"
+      class="button"
+      >Back</a
+    >
+  </div>
+  {% endif %}
+</div>
+{% endblock %} {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.0/mode/sql/sql.min.js"></script>
 <script>
-    // Initialize CodeMirror for read-only displays
-    document.querySelectorAll('.code-display').forEach(function(textarea) {
-        CodeMirror.fromTextArea(textarea, {
-            lineNumbers: true,
-            mode: "text/x-sql",
-            theme: "monokai",
-            readOnly: true
-        });
+  // Initialize CodeMirror for read-only displays
+  document.querySelectorAll(".code-display").forEach(function (textarea) {
+    CodeMirror.fromTextArea(textarea, {
+      lineNumbers: true,
+      mode: "text/x-sql",
+      theme: "monokai",
+      readOnly: true,
     });
+  });
 </script>
 {% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %} {% block title %}Create Exam Models - Exam System{%
+endblock %} {% block content %}
+<div class="create-exam-container">
+  <h2>Create Exam Models</h2>
+  <p>
+    Enter questions for each exam model. Students will be randomly assigned one
+    model when they enter the exam.
+  </p>
+
+  <form
+    method="POST"
+    action="{{ url_for('create_exam_models', exam_id=exam_id) }}"
+    id="create-models-form"
+  >
+    <input type="hidden" name="model_count" value="{{ model_count }}" />
+
+    <div class="models-container">
+      {% for model_num in range(1, model_count+1) %}
+      <div class="model-section">
+        <h3>Model {{ chr(64 + model_num) }} Questions</h3>
+
+        <div class="form-group">
+          <label for="model_name_{{ model_num }}">Model Name:</label>
+          <input
+            type="text"
+            id="model_name_{{ model_num }}"
+            name="model_name_{{ model_num }}"
+            value="Model {{ chr(64 + model_num) }}"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Questions:</label>
+          <div
+            id="questions-container-{{ model_num }}"
+            class="questions-container"
+          >
+            <div class="question-item">
+              <textarea
+                name="question_{{ model_num }}_1"
+                rows="3"
+                class="question-textarea"
+                placeholder="Enter question..."
+                required
+              ></textarea>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="button secondary add-question-btn"
+            data-model="{{ model_num }}"
+          >
+            Add Another Question
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="button primary">Create Models</button>
+      <a href="{{ url_for('teacher_dashboard') }}" class="button">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Add event listeners for all "Add Question" buttons
+    const addQuestionBtns = document.querySelectorAll(".add-question-btn");
+    addQuestionBtns.forEach((btn) => {
+      btn.addEventListener("click", function () {
+        const modelNum = this.getAttribute("data-model");
+        const questionsContainer = document.getElementById(
+          `questions-container-${modelNum}`
+        );
+
+        // Count existing questions to determine the next question number
+        const existingQuestions =
+          questionsContainer.querySelectorAll(".question-item").length;
+        const nextQuestionNum = existingQuestions + 1;
+
+        // Create new question item
+        const questionItem = document.createElement("div");
+        questionItem.className = "question-item";
+
+        // Create textarea for the question
+        const textarea = document.createElement("textarea");
+        textarea.name = `question_${modelNum}_${nextQuestionNum}`;
+        textarea.rows = "3";
+        textarea.className = "question-textarea";
+        textarea.placeholder = "Enter question...";
+        textarea.required = true;
+
+        // Create remove button
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "remove-question-btn";
+        removeBtn.textContent = "×";
+        removeBtn.addEventListener("click", function () {
+          questionItem.remove();
+        });
+
+        // Add elements to the DOM
+        questionItem.appendChild(textarea);
+        questionItem.appendChild(removeBtn);
+        questionsContainer.appendChild(questionItem);
+
+        textarea.focus();
+      });
+    });
+  });
+</script>
+{% endblock %}

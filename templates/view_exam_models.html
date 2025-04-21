@@ -1,0 +1,84 @@
+{% extends "base.html" %} {% block title %}View Exam Models - {{ exam.title }}{%
+endblock %} {% block content %}
+<div class="view-exam-models-container">
+  <h2>{{ exam.title }} - Exam Models</h2>
+  <a href="{{ url_for('teacher_dashboard') }}" class="button"
+    >Back to Dashboard</a
+  >
+
+  {% if models|length == 0 %}
+  <div class="alert alert-info">
+    No models have been created for this exam yet.
+  </div>
+  {% else %}
+  <div class="models-overview">
+    <p>
+      This exam has {{ models|length }} model(s). Students will get a random
+      model when they start the exam.
+    </p>
+
+    <div class="models-tabs">
+      <div class="tab-buttons">
+        {% for model in models %}
+        <button
+          class="tab-button {% if loop.first %}active{% endif %}"
+          data-model-id="{{ model.id }}"
+        >
+          {{ model.model_name }}
+        </button>
+        {% endfor %}
+      </div>
+
+      <div class="tab-content">
+        {% for model in models %}
+        <div
+          class="model-content {% if loop.first %}active{% endif %}"
+          id="model-{{ model.id }}-content"
+        >
+          <h3>{{ model.model_name }} Questions</h3>
+
+          {% if model_questions[model.id]|length > 0 %}
+          <ol class="question-list">
+            {% for question in model_questions[model.id] %}
+            <li class="question-item">{{ question.question_text }}</li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p>No questions in this model.</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Tab switching functionality
+    const tabButtons = document.querySelectorAll(".tab-button");
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        // Get model ID from the clicked button
+        const modelId = this.getAttribute("data-model-id");
+
+        // Remove active class from all buttons and content panels
+        document
+          .querySelectorAll(".tab-button")
+          .forEach((btn) => btn.classList.remove("active"));
+        document
+          .querySelectorAll(".model-content")
+          .forEach((content) => content.classList.remove("active"));
+
+        // Add active class to current button and corresponding content
+        this.classList.add("active");
+        document
+          .getElementById(`model-${modelId}-content`)
+          .classList.add("active");
+      });
+    });
+  });
+</script>
+{% endblock %}

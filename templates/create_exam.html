@@ -26,6 +26,19 @@
     </div>
 
     <div class="form-group">
+      <label for="model_count">Number of Exam Models:</label>
+      <select id="model_count" name="model_count">
+        <option value="1" selected>1 (Single Model)</option>
+        <option value="2">2 (A and B)</option>
+        <option value="3">3 (A, B and C)</option>
+        <option value="4">4 (A, B, C and D)</option>
+      </select>
+      <p class="help-text">
+        Multiple models will provide different questions to students randomly
+      </p>
+    </div>
+
+    <div class="form-group model-questions" id="single-model-questions">
       <label>Questions:</label>
       <div id="questions-container">
         <div class="question-item">
@@ -55,6 +68,31 @@
   document.addEventListener("DOMContentLoaded", function () {
     const addQuestionBtn = document.getElementById("add-question-btn");
     const questionsContainer = document.getElementById("questions-container");
+    const modelCountSelect = document.getElementById("model_count");
+
+    // Show or hide question section based on model count selection
+    modelCountSelect.addEventListener("change", function () {
+      const modelCount = parseInt(this.value);
+      const singleModelQuestions = document.getElementById(
+        "single-model-questions"
+      );
+
+      if (modelCount > 1) {
+        // If multiple models selected, hide single model questions
+        singleModelQuestions.style.display = "none";
+        // Make questions not required if we're going to use multiple models
+        const textareas = singleModelQuestions.querySelectorAll("textarea");
+        textareas.forEach((textarea) => (textarea.required = false));
+      } else {
+        // If single model selected, show questions
+        singleModelQuestions.style.display = "block";
+        // Make at least one question required
+        const textareas = singleModelQuestions.querySelectorAll("textarea");
+        if (textareas.length > 0) {
+          textareas[0].required = true;
+        }
+      }
+    });
 
     addQuestionBtn.addEventListener("click", function () {
       const questionItem = document.createElement("div");
@@ -65,12 +103,16 @@
       textarea.rows = "3";
       textarea.className = "question-textarea";
       textarea.placeholder = "Enter question...";
-      textarea.required = true;
+
+      // Only make required for single model
+      if (parseInt(modelCountSelect.value) === 1) {
+        textarea.required = true;
+      }
 
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "remove-question-btn";
-      removeBtn.textContent = "><";
+      removeBtn.textContent = "×"; // Changed from "><" to "×" for a proper delete symbol
       removeBtn.addEventListener("click", function () {
         questionItem.remove();
       });

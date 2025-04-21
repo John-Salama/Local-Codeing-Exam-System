@@ -12,7 +12,11 @@ endblock %} {% block head %}
 {% endblock %} {% block content %}
 <div class="exam-container">
   <div class="exam-header">
-    <h2>{{ exam.title }}</h2>
+    <h2>
+      {{ exam.title }} {% if model %}<span class="model-badge"
+        >{{ model.model_name }}</span
+      >{% endif %}
+    </h2>
     <div class="timer-container">
       <div id="timer">Time remaining: <span id="time-remaining"></span></div>
     </div>

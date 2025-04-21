@@ -794,6 +794,44 @@ footer {
   font-size: 0.9rem;
 }
 
+/* Model badges for exam variants */
+.model-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  background-color: rgba(24, 58, 100, 0.1);
+  color: var(--primary-color);
+  font-weight: 600;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+  border: 2px solid var(--primary-color);
+}
+
+/* Different model variants - use different colors */
+.model-badge:contains("Model A") {
+  background-color: rgba(24, 58, 100, 0.15);
+  color: #183a64;
+  border-color: #183a64;
+}
+
+.model-badge:contains("Model B") {
+  background-color: rgba(179, 27, 27, 0.15);
+  color: #b31b1b;
+  border-color: #b31b1b;
+}
+
+.model-badge:contains("Model C") {
+  background-color: rgba(56, 178, 172, 0.15);
+  color: #38b2ac;
+  border-color: #38b2ac;
+}
+
+.model-badge:contains("Model D") {
+  background-color: rgba(146, 64, 14, 0.15);
+  color: #92400e;
+  border-color: #92400e;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   header {

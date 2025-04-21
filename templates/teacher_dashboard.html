@@ -47,6 +47,11 @@ endblock %} {% block content %}
                 class="button small secondary"
                 >View Submissions</a
               >
+              <a
+                href="{{ url_for('view_exam_models', exam_id=exam.id) }}"
+                class="button small secondary"
+                >View Models</a
+              >
             </div>
           </td>
         </tr>
