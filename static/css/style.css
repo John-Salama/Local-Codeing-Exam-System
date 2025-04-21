@@ -753,6 +753,47 @@ footer {
   color: var(--primary-hover);
 }
 
+/* IP Management styles */
+.ip-management-container {
+  background-color: var(--light-color);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+}
+
+.ip-list {
+  margin-top: 2rem;
+}
+
+.last-student {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.last-student .student-name {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.last-student .student-number {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.last-student .login-time {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.no-data {
+  color: var(--grey-dark);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   header {

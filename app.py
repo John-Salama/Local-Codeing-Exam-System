@@ -742,10 +742,53 @@ def ip_management():
     with sqlite3.connect(DATABASE_PATH) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
+        # Get all IP restrictions
         cursor.execute("SELECT * FROM ip_restrictions ORDER BY id DESC")
         ip_restrictions = cursor.fetchall()
 
-    return render_template('ip_management.html', ip_restrictions=ip_restrictions)
+        # Convert to list of dictionaries for easier manipulation
+        ip_data = []
+        for ip in ip_restrictions:
+            ip_dict = dict(ip)
+
+            # Get the last student who logged in with this IP
+            cursor.execute("""
+                SELECT student_name, student_number, submission_time 
+                FROM submissions 
+                WHERE ip_address = ? 
+                ORDER BY submission_time DESC 
+                LIMIT 1
+            """, (ip['ip_address'],))
+
+            last_student = cursor.fetchone()
+            if last_student:
+                ip_dict['last_student_name'] = last_student['student_name']
+                ip_dict['last_student_number'] = last_student['student_number']
+                ip_dict['last_login_time'] = last_student['submission_time']
+            else:
+                # Also check exam_sessions for cases where students logged in but didn't submit
+                cursor.execute("""
+                    SELECT student_name, student_number, start_time 
+                    FROM exam_sessions 
+                    WHERE ip_address = ? 
+                    ORDER BY start_time DESC 
+                    LIMIT 1
+                """, (ip['ip_address'],))
+
+                last_session = cursor.fetchone()
+                if last_session:
+                    ip_dict['last_student_name'] = last_session['student_name']
+                    ip_dict['last_student_number'] = last_session['student_number']
+                    ip_dict['last_login_time'] = last_session['start_time']
+                else:
+                    ip_dict['last_student_name'] = None
+                    ip_dict['last_student_number'] = None
+                    ip_dict['last_login_time'] = None
+
+            ip_data.append(ip_dict)
+
+    return render_template('ip_management.html', ip_restrictions=ip_data)
 
 # Approve IP route
 

@@ -15,6 +15,7 @@ endblock %} {% block content %}
         <tr>
           <th>IP Address</th>
           <th>Status</th>
+          <th>Last Used By</th>
           <th>Blocked Since</th>
           <th>Actions</th>
         </tr>
@@ -30,6 +31,17 @@ endblock %} {% block content %}
             <span class="status approved">Approved</span>
             {% else %}
             <span class="status neutral">Pending</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ip.last_student_name %}
+            <div class="last-student">
+              <span class="student-name">{{ ip.last_student_name }}</span>
+              <span class="student-number">({{ ip.last_student_number }})</span>
+              <div class="login-time">{{ ip.last_login_time }}</div>
+            </div>
+            {% else %}
+            <span class="no-data">No login data</span>
             {% endif %}
           </td>
           <td>{{ ip.blocked_time if ip.blocked_time else 'N/A' }}</td>
@@ -53,7 +65,7 @@ endblock %} {% block content %}
         </tr>
         {% endfor %} {% else %}
         <tr>
-          <td colspan="4">No IP restrictions found.</td>
+          <td colspan="5">No IP restrictions found.</td>
         </tr>
         {% endif %}
       </tbody>
