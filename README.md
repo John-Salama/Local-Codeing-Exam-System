@@ -144,6 +144,81 @@ python app.py
 
 After setup, the system will be available at http://localhost:5000
 
+## Testing the System
+
+The Exam System comes with built-in testing utilities to verify proper setup and performance under load.
+
+### System Test
+
+The system test utility verifies that your environment is correctly set up and all components are working:
+
+```bash
+# Using the run script (Linux)
+./run.sh test
+
+# Using the run script (Windows)
+run.bat test
+
+# Or directly
+python test_system.py
+```
+
+The test system checks:
+
+- Python version compatibility
+- Required dependencies
+- File and folder structure
+- Template files
+- File permissions
+- Database initialization
+- Server connectivity
+
+Additional test options:
+
+```bash
+# Test specific components
+python test_system.py --test python
+python test_system.py --test dependencies
+python test_system.py --test files
+python test_system.py --test templates
+python test_system.py --test permissions
+python test_system.py --test database
+python test_system.py --test server
+
+# Quiet mode (print only errors and summary)
+python test_system.py --quiet
+```
+
+### Stress Test
+
+The stress test utility simulates multiple concurrent students accessing, solving, and submitting exams to test how the system performs under load:
+
+```bash
+# Basic usage
+python stress_test.py
+
+# Advanced usage
+python stress_test.py -n 200 -c 30 -a 5 -v
+```
+
+Parameters:
+
+- `-n, --num-students N`: Number of students to simulate (default: 100)
+- `-c, --concurrent N`: Maximum concurrent connections (default: 20)
+- `-a, --auto-saves N`: Number of auto-saves per student (default: 3)
+- `-v, --verbose`: Show detailed progress
+- `--url URL`: Base URL of the exam system (default: http://localhost:5000)
+- `--skip-check`: Skip checking for active exam
+
+The test generates a JSON report with detailed metrics including:
+
+- Total execution time
+- Success rate
+- Request timing statistics (login, exam loading, auto-saving, submission)
+- Requests per second
+
+For more details, see the `stress_test_README.md` file.
+
 ## Default Credentials
 
 Teacher login:

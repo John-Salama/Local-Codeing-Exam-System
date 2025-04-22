@@ -46,7 +46,7 @@ goto after_install
 
 :install_deps
 echo Installing dependencies...
-pip install flask werkzeug flask_limiter flask_wtf openpyxl
+pip install flask werkzeug flask_limiter flask_wtf openpyxl requests
 echo. > venv\.dependencies_installed
 echo Dependencies installed successfully.
 

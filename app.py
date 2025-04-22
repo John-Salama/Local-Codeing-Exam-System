@@ -15,6 +15,19 @@ app.secret_key = secrets.token_hex(16)
 # Add chr function to Jinja2 environment
 app.jinja_env.globals.update(chr=chr)
 
+# Function to get real IP address (handles X-Forwarded-For for testing)
+
+
+def get_real_ip():
+    """
+    Gets the real IP address of the client, taking into account X-Forwarded-For header
+    which is used by the stress testing script for IP rotation.
+    """
+    if 'X-Forwarded-For' in request.headers:
+        return request.headers.get('X-Forwarded-For')
+    return request.remote_addr
+
+
 # Database setup
 DATABASE_PATH = 'database/exam_system.db'
 
@@ -221,7 +234,7 @@ def student_login():
                 return render_template('student_login.html', error=error)
 
             # Check IP address
-            ip_address = request.remote_addr
+            ip_address = get_real_ip()
             cursor.execute(
                 "SELECT * FROM ip_restrictions WHERE ip_address = ?", (ip_address,))
             ip_restriction = cursor.fetchone()
@@ -398,7 +411,7 @@ def auto_save():
     answers = request.json.get('answers', {})  # Get answers for each question
     combined_code = request.json.get(
         'combinedCode', '')  # For backward compatibility
-    ip_address = request.remote_addr
+    ip_address = get_real_ip()
 
     with sqlite3.connect(DATABASE_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -416,17 +429,7 @@ def auto_save():
         result = cursor.fetchone()
         new_version = (result[0] or 0) + 1
 
-        # Delete old versions if more than 4
-        if new_version > 4:
-            cursor.execute(
-                """
-                DELETE FROM submissions 
-                WHERE student_number = ? AND exam_id = ? AND model_id = ?
-                ORDER BY submission_time ASC LIMIT 1
-                """,
-                (session['student_number'],
-                 session['exam_id'], session['model_id'])
-            )
+        # We keep all versions now instead of deleting older ones
 
         # Insert new submission
         cursor.execute(
@@ -473,7 +476,7 @@ def submit_exam():
     answers = request.json.get('answers', {})  # Get answers for each question
     combined_code = request.json.get(
         'combinedCode', '')  # For backward compatibility
-    ip_address = request.remote_addr
+    ip_address = get_real_ip()
 
     with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
@@ -774,14 +777,14 @@ def view_submissions(exam_id):
         )
         students = cursor.fetchall()
 
-        # Get latest submissions for each student (up to 3)
+        # Get latest submissions for each student (now showing all instead of just 3)
         student_submissions = {}
         for student in students:
             cursor.execute(
                 """
                 SELECT * FROM submissions 
                 WHERE student_number = ? AND exam_id = ? 
-                ORDER BY submission_time DESC LIMIT 3
+                ORDER BY submission_time DESC
                 """,
                 (student['student_number'], exam_id)
             )

@@ -32,7 +32,7 @@ echo "Virtual environment activated."
 # Install dependencies if requested or if first run
 if [ "$1" == "install" ] || [ ! -f "venv/.dependencies_installed" ]; then
   echo "Installing dependencies..."
-  pip install flask werkzeug flask_limiter flask_wtf openpyxl
+  pip install flask werkzeug flask_limiter flask_wtf openpyxl requests
   touch venv/.dependencies_installed
   echo "Dependencies installed successfully."
 fi
