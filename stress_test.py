@@ -308,7 +308,8 @@ def run_stress_test(base_url, num_students, max_workers, auto_saves, verbose=Fal
 
     if stats["auto_save_times"]:
         print(f"Auto-save: avg={statistics.mean(stats['auto_save_times']):.3f}, "
-              f"min={min(stats['auto_save_times'])::.3f}, "
+              # Fixed extra colon in format specifier
+              f"min={min(stats['auto_save_times']):.3f}, "
               f"max={max(stats['auto_save_times']):.3f}")
 
     if stats["submission_times"]:
