@@ -1,20 +1,23 @@
 {% extends "base.html" %} {% block title %}View Exam Models - {{ exam.title }}{%
 endblock %} {% block content %}
 <div class="view-exam-models-container">
-  <h2>{{ exam.title }} - Exam Models</h2>
-  <a href="{{ url_for('teacher_dashboard') }}" class="button"
-    >Back to Dashboard</a
-  >
+  <h2>
+    {{ exam.title }} - Exam Models
+    <a href="{{ url_for('teacher_dashboard') }}" class="button primary"
+      >Back to Dashboard</a
+    >
+  </h2>
 
   {% if models|length == 0 %}
   <div class="alert alert-info">
-    No models have been created for this exam yet.
+    <p>No models have been created for this exam yet.</p>
+    <p>You can create models by editing the exam.</p>
   </div>
   {% else %}
   <div class="models-overview">
     <p>
-      This exam has {{ models|length }} model(s). Students will get a random
-      model when they start the exam.
+      <strong>Overview:</strong> This exam has {{ models|length }} model(s).
+      Students will be randomly assigned one model when they start the exam.
     </p>
 
     <div class="models-tabs">
@@ -29,7 +32,7 @@ endblock %} {% block content %}
         {% endfor %}
       </div>
 
-      <div class="tab-content">
+      <div class="models-tab-content">
         {% for model in models %}
         <div
           class="model-content {% if loop.first %}active{% endif %}"
@@ -37,14 +40,17 @@ endblock %} {% block content %}
         >
           <h3>{{ model.model_name }} Questions</h3>
 
-          {% if model_questions[model.id]|length > 0 %}
+          {% if model_questions[model.id] and model_questions[model.id]|length >
+          0 %}
           <ol class="question-list">
             {% for question in model_questions[model.id] %}
             <li class="question-item">{{ question.question_text }}</li>
             {% endfor %}
           </ol>
           {% else %}
-          <p>No questions in this model.</p>
+          <div class="alert alert-info">
+            <p>No questions found in this model.</p>
+          </div>
           {% endif %}
         </div>
         {% endfor %}
@@ -72,10 +78,12 @@ endblock %} {% block content %}
           .querySelectorAll(".model-content")
           .forEach((content) => content.classList.remove("active"));
 
-        // Add active class to current button and corresponding content
+        // Add active class to current button
         this.classList.add("active");
+
+        // Add active class to corresponding content panel
         document
-          .getElementById(`model-${modelId}-content`)
+          .getElementById("model-" + modelId + "-content")
           .classList.add("active");
       });
     });

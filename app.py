@@ -686,19 +686,34 @@ def view_exam_models(exam_id):
             "SELECT * FROM exam_models WHERE exam_id = ? ORDER BY id", (exam_id,))
         models = cursor.fetchall()
 
+        # Convert models to list of dictionaries for consistent access in template
+        models_list = []
+        for model in models:
+            models_list.append(dict(model))
+
         # Get questions for each model
         model_questions = {}
-        for model in models:
+        for model in models_list:
+            model_id = model['id']
             cursor.execute(
                 "SELECT * FROM questions WHERE exam_id = ? AND model_id = ? ORDER BY id",
-                (exam_id, model['id'])
+                (exam_id, model_id)
             )
-            model_questions[model['id']] = cursor.fetchall()
+            questions_rows = cursor.fetchall()
+
+            # Convert questions to list of dictionaries
+            questions = []
+            for q in questions_rows:
+                questions.append(dict(q))
+
+            model_questions[model_id] = questions
+            print(
+                f"Model {model_id}: {model['model_name']} has {len(questions)} questions")
 
     return render_template(
         'view_exam_models.html',
         exam=exam,
-        models=models,
+        models=models_list,
         model_questions=model_questions
     )
 
@@ -1251,11 +1266,19 @@ def export_grades_excel(exam_id):
             "SELECT * FROM questions WHERE exam_id = ? ORDER BY id", (exam_id,))
         questions = cursor.fetchall()
 
+        # Get all models for this exam
+        cursor.execute(
+            "SELECT * FROM exam_models WHERE exam_id = ?", (exam_id,))
+        models_data = cursor.fetchall()
+
+        # Create a model lookup dictionary
+        models = {model['id']: model['model_name'] for model in models_data}
+
         # Get grades only from the latest submissions for each student for this specific exam
         cursor.execute(
             """
             WITH latest_submissions AS (
-                SELECT s.id, s.student_number, s.student_name, s.submission_time, s.ip_address,
+                SELECT s.id, s.student_number, s.student_name, s.submission_time, s.ip_address, s.model_id,
                        ROW_NUMBER() OVER (PARTITION BY s.student_number 
                                          ORDER BY s.submission_time DESC) AS submission_rank
                 FROM submissions s
@@ -1267,6 +1290,7 @@ def export_grades_excel(exam_id):
                 ls.student_number, 
                 ls.submission_time,
                 ls.ip_address,
+                ls.model_id,
                 g.mark, 
                 g.comment, 
                 g.graded_at
@@ -1310,7 +1334,7 @@ def export_grades_excel(exam_id):
         current_row = 5
 
         # Write headers
-        headers = ["Student Name", "Student Number",
+        headers = ["Student Name", "Student Number", "Model",
                    "IP Address", "Submission Time", "Grade", "Comment"]
 
         for col_num, header in enumerate(headers, 1):
@@ -1321,7 +1345,7 @@ def export_grades_excel(exam_id):
             cell.border = thin_border
 
         # Set column widths
-        column_widths = [20, 15, 15, 20, 10, 30]
+        column_widths = [20, 15, 15, 15, 20, 10, 30]
         for i, width in enumerate(column_widths):
             ws.column_dimensions[chr(65 + i)].width = width
 
@@ -1331,14 +1355,35 @@ def export_grades_excel(exam_id):
                     value=student['student_name']).border = thin_border
             ws.cell(row=row_num, column=2,
                     value=student['student_number']).border = thin_border
-            ws.cell(row=row_num, column=3,
-                    value=student['ip_address']).border = thin_border
+
+            # Add model information
+            model_cell = ws.cell(row=row_num, column=3,
+                                 value=models.get(student['model_id'], "Default"))
+            model_cell.border = thin_border
+
+            # Apply color to model cell based on model name
+            model_name = models.get(student['model_id'], "").upper()
+            if "A" in model_name:
+                model_cell.fill = PatternFill(
+                    "solid", fgColor="DCE6F1")  # Light blue
+            elif "B" in model_name:
+                model_cell.fill = PatternFill(
+                    "solid", fgColor="E6DCF1")  # Light purple
+            elif "C" in model_name:
+                model_cell.fill = PatternFill(
+                    "solid", fgColor="DCF1E6")  # Light green
+            elif "D" in model_name:
+                model_cell.fill = PatternFill(
+                    "solid", fgColor="F1DCE6")  # Light pink
+
             ws.cell(row=row_num, column=4,
+                    value=student['ip_address']).border = thin_border
+            ws.cell(row=row_num, column=5,
                     value=student['submission_time']).border = thin_border
 
             # Grade might be NULL if not graded yet
             grade_cell = ws.cell(
-                row=row_num, column=5, value=student['mark'] if student['mark'] is not None else "Not graded")
+                row=row_num, column=6, value=student['mark'] if student['mark'] is not None else "Not graded")
             grade_cell.border = thin_border
 
             # If not graded, add red fill
@@ -1346,7 +1391,7 @@ def export_grades_excel(exam_id):
                 grade_cell.fill = PatternFill("solid", fgColor="FFCCCC")
 
             comment_cell = ws.cell(
-                row=row_num, column=6, value=student['comment'] if student['comment'] is not None else "")
+                row=row_num, column=7, value=student['comment'] if student['comment'] is not None else "")
             comment_cell.border = thin_border
 
         # Save the workbook to a BytesIO object
