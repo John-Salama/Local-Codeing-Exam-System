@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import io
+import random
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
@@ -32,9 +33,44 @@ def get_real_ip():
 DATABASE_PATH = 'database/exam_system.db'
 
 
+# Database connection helper with retry mechanism
+def get_db_connection(timeout=20, max_retries=5):
+    """
+    Gets a SQLite connection with a configurable timeout and retry mechanism 
+    to handle database locks.
+
+    Args:
+        timeout (int): Timeout in seconds for acquiring a database lock
+        max_retries (int): Maximum number of retries when database is locked
+
+    Returns:
+        sqlite3.Connection: Database connection object
+    """
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            # Set timeout for acquiring locks and enable row factory for named access
+            conn = sqlite3.connect(DATABASE_PATH, timeout=timeout)
+            conn.row_factory = sqlite3.Row
+            return conn
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e) and retry_count < max_retries - 1:
+                retry_count += 1
+                # Exponential backoff with jitter to reduce contention
+                wait_time = 0.1 * (2 ** retry_count) + random.uniform(0, 0.1)
+                time.sleep(wait_time)
+            else:
+                raise
+
+    # This should never be reached due to the raise in the else clause above,
+    # but added for completeness
+    raise sqlite3.OperationalError(
+        "Failed to acquire database lock after multiple retries")
+
+
 def init_db():
     """Initialize database with required tables"""
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Create users table
@@ -185,7 +221,7 @@ def teacher_login():
         username = request.form['username']
         password = request.form['password']
 
-        with sqlite3.connect(DATABASE_PATH) as conn:
+        with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM users WHERE username = ?", (username,))
@@ -220,92 +256,96 @@ def student_login():
             error = 'Please enter both name and student number'
             return render_template('student_login.html', error=error)
 
-        # Check if an exam is active
-        with sqlite3.connect(DATABASE_PATH) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+        # Check if an exam is active using our improved connection handler
+        try:
+            with get_db_connection(timeout=10) as conn:
+                cursor = conn.cursor()
 
-            # Get active exam
-            cursor.execute("SELECT * FROM exams WHERE is_active = 1")
-            exam = cursor.fetchone()
+                # Get active exam
+                cursor.execute("SELECT * FROM exams WHERE is_active = 1")
+                exam = cursor.fetchone()
 
-            if not exam:
-                error = 'No active exam available'
-                return render_template('student_login.html', error=error)
+                if not exam:
+                    error = 'No active exam available'
+                    return render_template('student_login.html', error=error)
 
-            # Check IP address
-            ip_address = get_real_ip()
-            cursor.execute(
-                "SELECT * FROM ip_restrictions WHERE ip_address = ?", (ip_address,))
-            ip_restriction = cursor.fetchone()
-
-            if ip_restriction and ip_restriction['is_blocked'] and not ip_restriction['approved']:
-                error = 'Your IP address is blocked. Please contact the teacher.'
-                return render_template('student_login.html', error=error)
-
-            # Check for existing session
-            cursor.execute(
-                """
-                SELECT * FROM exam_sessions 
-                WHERE student_number = ? AND exam_id = ? AND end_time > ?
-                """,
-                (student_number, exam['id'], datetime.now())
-            )
-            existing_session = cursor.fetchone()
-
-            if not existing_session:
-                # Get available models for this exam
+                # Check IP address
+                ip_address = get_real_ip()
                 cursor.execute(
-                    "SELECT * FROM exam_models WHERE exam_id = ?",
-                    (exam['id'],)
-                )
-                available_models = cursor.fetchall()
+                    "SELECT * FROM ip_restrictions WHERE ip_address = ?", (ip_address,))
+                ip_restriction = cursor.fetchone()
 
-                if not available_models:
-                    # Create a default model if none exists (for backwards compatibility)
-                    cursor.execute(
-                        "INSERT INTO exam_models (exam_id, model_name) VALUES (?, ?)",
-                        (exam['id'], "Default Model")
-                    )
-                    model_id = cursor.lastrowid
-                else:
-                    # Randomly select a model from available models
-                    import random
-                    model = random.choice(available_models)
-                    model_id = model['id']
+                if ip_restriction and ip_restriction['is_blocked'] and not ip_restriction['approved']:
+                    error = 'Your IP address is blocked. Please contact the teacher.'
+                    return render_template('student_login.html', error=error)
 
-                # Create new exam session
-                start_time = datetime.now()
-                end_time = start_time + timedelta(minutes=exam['duration'])
-
+                # Check for existing session
                 cursor.execute(
                     """
-                    INSERT INTO exam_sessions 
-                    (student_name, student_number, exam_id, model_id, start_time, end_time, ip_address) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    SELECT * FROM exam_sessions 
+                    WHERE student_number = ? AND exam_id = ? AND end_time > ?
                     """,
-                    (name, student_number, exam['id'], model_id,
-                     start_time, end_time, ip_address)
+                    (student_number, exam['id'], datetime.now())
                 )
-                session_id = cursor.lastrowid
-                session['model_id'] = model_id
-            else:
-                session_id = existing_session['id']
-                session['model_id'] = existing_session['model_id']
+                existing_session = cursor.fetchone()
 
-            session['student_name'] = name
-            session['student_number'] = student_number
-            session['exam_id'] = exam['id']
-            session['session_id'] = session_id
+                if not existing_session:
+                    # Get available models for this exam
+                    cursor.execute(
+                        "SELECT * FROM exam_models WHERE exam_id = ?",
+                        (exam['id'],)
+                    )
+                    available_models = cursor.fetchall()
 
-            # Record IP address
-            if not ip_restriction:
-                cursor.execute(
-                    "INSERT INTO ip_restrictions (ip_address, is_blocked, approved) VALUES (?, 0, 1)",
-                    (ip_address,)
-                )
+                    if not available_models:
+                        # Create a default model if none exists (for backwards compatibility)
+                        cursor.execute(
+                            "INSERT INTO exam_models (exam_id, model_name) VALUES (?, ?)",
+                            (exam['id'], "Default Model")
+                        )
+                        model_id = cursor.lastrowid
+                    else:
+                        # Randomly select a model from available models
+                        model = random.choice(available_models)
+                        model_id = model['id']
 
-            return redirect(url_for('take_exam'))
+                    # Create new exam session
+                    start_time = datetime.now()
+                    end_time = start_time + timedelta(minutes=exam['duration'])
+
+                    cursor.execute(
+                        """
+                        INSERT INTO exam_sessions 
+                        (student_name, student_number, exam_id, model_id, start_time, end_time, ip_address) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (name, student_number, exam['id'], model_id,
+                         start_time, end_time, ip_address)
+                    )
+                    session_id = cursor.lastrowid
+                    session['model_id'] = model_id
+                else:
+                    session_id = existing_session['id']
+                    session['model_id'] = existing_session['model_id']
+
+                session['student_name'] = name
+                session['student_number'] = student_number
+                session['exam_id'] = exam['id']
+                session['session_id'] = session_id
+
+                # Record IP address
+                if not ip_restriction:
+                    cursor.execute(
+                        "INSERT INTO ip_restrictions (ip_address, is_blocked, approved) VALUES (?, 0, 1)",
+                        (ip_address,)
+                    )
+
+                conn.commit()
+                return redirect(url_for('take_exam'))
+        except sqlite3.OperationalError as e:
+            print(f"Database error in student_login: {str(e)}")
+            error = 'Database is busy. Please try again in a moment.'
+            return render_template('student_login.html', error=error)
 
     return render_template('student_login.html', error=error)
 
@@ -317,8 +357,7 @@ def take_exam():
     if 'student_name' not in session or 'student_number' not in session or 'exam_id' not in session or 'model_id' not in session:
         return redirect(url_for('student_login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get exam details
@@ -413,57 +452,60 @@ def auto_save():
         'combinedCode', '')  # For backward compatibility
     ip_address = get_real_ip()
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+    # Use the new connection helper with retry mechanism
+    try:
+        with get_db_connection(timeout=30, max_retries=3) as conn:
+            cursor = conn.cursor()
 
-        # Get most recent version number
-        cursor.execute(
-            """
-            SELECT MAX(version) as max_version FROM submissions 
-            WHERE student_number = ? AND exam_id = ? AND model_id = ?
-            """,
-            (session['student_number'],
-             session['exam_id'], session['model_id'])
-        )
-        result = cursor.fetchone()
-        new_version = (result[0] or 0) + 1
-
-        # We keep all versions now instead of deleting older ones
-
-        # Insert new submission
-        cursor.execute(
-            """
-            INSERT INTO submissions 
-            (student_name, student_number, exam_id, model_id, submission_time, ip_address, code_content, version) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                session['student_name'],
-                session['student_number'],
-                session['exam_id'],
-                session['model_id'],
-                datetime.now(),
-                ip_address,
-                combined_code,
-                new_version
-            )
-        )
-        submission_id = cursor.lastrowid
-
-        # Save individual answers for each question
-        for question_id, answer_content in answers.items():
+            # Get most recent version number
             cursor.execute(
                 """
-                INSERT INTO question_answers
-                (submission_id, question_id, answer_content)
-                VALUES (?, ?, ?)
+                SELECT MAX(version) as max_version FROM submissions 
+                WHERE student_number = ? AND exam_id = ? AND model_id = ?
                 """,
-                (submission_id, question_id, answer_content)
+                (session['student_number'],
+                 session['exam_id'], session['model_id'])
             )
+            result = cursor.fetchone()
+            new_version = (result[0] or 0) + 1
 
-        conn.commit()
-        return jsonify({'success': True, 'version': new_version})
+            # Insert new submission
+            cursor.execute(
+                """
+                INSERT INTO submissions 
+                (student_name, student_number, exam_id, model_id, submission_time, ip_address, code_content, version) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session['student_name'],
+                    session['student_number'],
+                    session['exam_id'],
+                    session['model_id'],
+                    datetime.now(),
+                    ip_address,
+                    combined_code,
+                    new_version
+                )
+            )
+            submission_id = cursor.lastrowid
+
+            # Save individual answers for each question
+            for question_id, answer_content in answers.items():
+                cursor.execute(
+                    """
+                    INSERT INTO question_answers
+                    (submission_id, question_id, answer_content)
+                    VALUES (?, ?, ?)
+                    """,
+                    (submission_id, int(question_id), answer_content)
+                )
+
+            conn.commit()
+            return jsonify({'success': True, 'version': new_version})
+    except sqlite3.OperationalError as e:
+        # Log the error for debugging
+        print(f"Database error in auto_save: {str(e)}")
+        return jsonify({'error': 'Database is busy, please try again'}), 503
 
 # Final submission endpoint
 
@@ -478,71 +520,75 @@ def submit_exam():
         'combinedCode', '')  # For backward compatibility
     ip_address = get_real_ip()
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        cursor = conn.cursor()
+    try:
+        with get_db_connection(timeout=30, max_retries=3) as conn:
+            cursor = conn.cursor()
 
-        # Get most recent version number
-        cursor.execute(
-            """
-            SELECT MAX(version) as max_version FROM submissions 
-            WHERE student_number = ? AND exam_id = ? AND model_id = ?
-            """,
-            (session['student_number'],
-             session['exam_id'], session['model_id'])
-        )
-        result = cursor.fetchone()
-        new_version = (result[0] or 0) + 1
-
-        # Insert final submission
-        cursor.execute(
-            """
-            INSERT INTO submissions 
-            (student_name, student_number, exam_id, model_id, submission_time, ip_address, code_content, version) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                session['student_name'],
-                session['student_number'],
-                session['exam_id'],
-                session['model_id'],
-                datetime.now(),
-                ip_address,
-                combined_code,
-                new_version
-            )
-        )
-        submission_id = cursor.lastrowid
-
-        # Save individual answers for each question
-        for question_id, answer_content in answers.items():
+            # Get most recent version number
             cursor.execute(
                 """
-                INSERT INTO question_answers
-                (submission_id, question_id, answer_content)
-                VALUES (?, ?, ?)
+                SELECT MAX(version) as max_version FROM submissions 
+                WHERE student_number = ? AND exam_id = ? AND model_id = ?
                 """,
-                (submission_id, question_id, answer_content)
+                (session['student_number'],
+                 session['exam_id'], session['model_id'])
+            )
+            result = cursor.fetchone()
+            new_version = (result[0] or 0) + 1
+
+            # Insert final submission
+            cursor.execute(
+                """
+                INSERT INTO submissions 
+                (student_name, student_number, exam_id, model_id, submission_time, ip_address, code_content, version) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session['student_name'],
+                    session['student_number'],
+                    session['exam_id'],
+                    session['model_id'],
+                    datetime.now(),
+                    ip_address,
+                    combined_code,
+                    new_version
+                )
+            )
+            submission_id = cursor.lastrowid
+
+            # Save individual answers for each question
+            for question_id, answer_content in answers.items():
+                cursor.execute(
+                    """
+                    INSERT INTO question_answers
+                    (submission_id, question_id, answer_content)
+                    VALUES (?, ?, ?)
+                    """,
+                    (submission_id, int(question_id), answer_content)
+                )
+
+            # Block IP after submission
+            cursor.execute(
+                """
+                UPDATE ip_restrictions 
+                SET is_blocked = 1, blocked_time = ?, approved = 0 
+                WHERE ip_address = ?
+                """,
+                (datetime.now(), ip_address)
             )
 
-        # Block IP after submission
-        cursor.execute(
-            """
-            UPDATE ip_restrictions 
-            SET is_blocked = 1, blocked_time = ?, approved = 0 
-            WHERE ip_address = ?
-            """,
-            (datetime.now(), ip_address)
-        )
+            # Clear session
+            session.pop('student_name', None)
+            session.pop('student_number', None)
+            session.pop('exam_id', None)
+            session.pop('model_id', None)
+            session.pop('session_id', None)
 
-        # Clear session
-        session.pop('student_name', None)
-        session.pop('student_number', None)
-        session.pop('exam_id', None)
-        session.pop('model_id', None)
-        session.pop('session_id', None)
-
-        conn.commit()
-        return jsonify({'success': True})
+            conn.commit()
+            return jsonify({'success': True})
+    except sqlite3.OperationalError as e:
+        print(f"Database error in submit_exam: {str(e)}")
+        return jsonify({'error': 'Database is busy, please try again'}), 503
 
 # Teacher dashboard route
 
@@ -552,8 +598,7 @@ def teacher_dashboard():
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM exams ORDER BY id DESC")
         exams = cursor.fetchall()
@@ -573,7 +618,7 @@ def create_exam():
         duration = int(request.form['duration'])
         model_count = int(request.form.get('model_count', 1))
 
-        with sqlite3.connect(DATABASE_PATH) as conn:
+        with get_db_connection() as conn:
             cursor = conn.cursor()
 
             # Insert exam
@@ -624,7 +669,7 @@ def create_exam_models(exam_id):
         model_count = 1
 
     if request.method == 'POST':
-        with sqlite3.connect(DATABASE_PATH) as conn:
+        with get_db_connection() as conn:
             cursor = conn.cursor()
 
             # Process each model's questions
@@ -655,7 +700,7 @@ def create_exam_models(exam_id):
         return redirect(url_for('teacher_dashboard'))
 
     # For GET request, show form to create models
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM exams WHERE id = ?", (exam_id,))
         exam = cursor.fetchone()
@@ -673,8 +718,7 @@ def view_exam_models(exam_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get exam details
@@ -728,7 +772,7 @@ def activate_exam(exam_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Deactivate all exams
@@ -750,8 +794,7 @@ def view_submissions(exam_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get exam details
@@ -823,8 +866,7 @@ def grade_submission(submission_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get submission details
@@ -946,8 +988,7 @@ def ip_management():
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get all IP restrictions
@@ -1005,7 +1046,7 @@ def approve_ip(ip_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE ip_restrictions SET is_blocked = 0, approved = 1 WHERE id = ?",
@@ -1023,7 +1064,7 @@ def block_ip(ip_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
+    with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE ip_restrictions SET is_blocked = 1, blocked_time = ?, approved = 0 WHERE id = ?",
@@ -1041,8 +1082,7 @@ def all_grades():
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get all exams
@@ -1172,8 +1212,7 @@ def export_grades():
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get all exams
@@ -1253,8 +1292,7 @@ def export_grades_excel(exam_id):
     if 'role' not in session or session['role'] != 'teacher':
         return redirect(url_for('login'))
 
-    with sqlite3.connect(DATABASE_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    with get_db_connection() as conn:
         cursor = conn.cursor()
 
         # Get exam details
