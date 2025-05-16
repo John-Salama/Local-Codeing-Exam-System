@@ -240,12 +240,9 @@ endblock %} {% block head %}
       <div class="form-group">
         <label for="mark">Mark:</label>
         <input
-          type="number"
+          type="text"
           id="mark"
           name="mark"
-          step="0.5"
-          min="0"
-          max="100"
           value="{{ grade.mark if grade else '' }}"
           required
         />

@@ -182,7 +182,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS grades (
             id INTEGER PRIMARY KEY,
             submission_id INTEGER,
-            mark FLOAT,
+            mark TEXT,
             comment TEXT,
             graded_by INTEGER,
             graded_at TIMESTAMP,
@@ -929,8 +929,17 @@ def grade_submission(submission_id):
                     can_grade=False
                 )
 
-            mark = float(request.form['mark'])
+            mark = request.form['mark']
             comment = request.form['comment']
+
+            # Try to convert mark to float if it looks like a number
+            try:
+                # Check if it's numeric
+                if mark and mark.replace('.', '', 1).isdigit():
+                    mark = float(mark)
+            except (ValueError, TypeError):
+                # If conversion fails, keep it as a string
+                pass
 
             # Check if grade already exists
             cursor.execute(
