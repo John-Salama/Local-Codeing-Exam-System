@@ -214,6 +214,15 @@ endblock %} {% block head %}
       <div class="question-text">
         <strong>Question {{ loop.index }}:</strong> {{ question.question_text }}
       </div>
+      {% if question.image_filename %}
+      <div class="question-image-container">
+        <img
+          src="{{ url_for('static', filename='uploads/' + question.image_filename) }}"
+          alt="Question image"
+          class="question-image"
+        />
+      </div>
+      {% endif %}
       <div class="answer-content">
         <textarea class="code-editor" data-question-id="{{ question.id }}">
 {{ question_answers.get(question.id, "No answer provided") }}</textarea

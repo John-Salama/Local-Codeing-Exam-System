@@ -7,6 +7,7 @@
     method="POST"
     action="{{ url_for('create_exam') }}"
     id="create-exam-form"
+    enctype="multipart/form-data"
   >
     <div class="form-group">
       <label for="title">Exam Title:</label>
@@ -49,6 +50,16 @@
             placeholder="Enter question..."
             required
           ></textarea>
+          <div class="question-image-upload">
+            <label for="question-image-1">Attach Image (optional):</label>
+            <input
+              type="file"
+              id="question-image-1"
+              name="question-image-1"
+              accept="image/*"
+              class="image-input"
+            />
+          </div>
         </div>
       </div>
 
@@ -98,6 +109,10 @@
       const questionItem = document.createElement("div");
       questionItem.className = "question-item";
 
+      // Get the current question count to create unique IDs
+      const questionCount =
+        questionsContainer.querySelectorAll(".question-item").length + 1;
+
       const textarea = document.createElement("textarea");
       textarea.name = "question";
       textarea.rows = "3";
@@ -109,6 +124,24 @@
         textarea.required = true;
       }
 
+      // Create image upload section
+      const imageUploadDiv = document.createElement("div");
+      imageUploadDiv.className = "question-image-upload";
+
+      const imageLabel = document.createElement("label");
+      imageLabel.setAttribute("for", `question-image-${questionCount}`);
+      imageLabel.textContent = "Attach Image (optional):";
+
+      const imageInput = document.createElement("input");
+      imageInput.type = "file";
+      imageInput.id = `question-image-${questionCount}`;
+      imageInput.name = `question-image-${questionCount}`;
+      imageInput.accept = "image/*";
+      imageInput.className = "image-input";
+
+      imageUploadDiv.appendChild(imageLabel);
+      imageUploadDiv.appendChild(imageInput);
+
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "remove-question-btn";
@@ -118,6 +151,7 @@
       });
 
       questionItem.appendChild(textarea);
+      questionItem.appendChild(imageUploadDiv);
       questionItem.appendChild(removeBtn);
       questionsContainer.appendChild(questionItem);
 

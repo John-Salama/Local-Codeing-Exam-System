@@ -11,6 +11,7 @@ endblock %} {% block content %}
     method="POST"
     action="{{ url_for('create_exam_models', exam_id=exam_id) }}"
     id="create-models-form"
+    enctype="multipart/form-data"
   >
     <input type="hidden" name="model_count" value="{{ model_count }}" />
 
@@ -44,6 +45,18 @@ endblock %} {% block content %}
                 placeholder="Enter question..."
                 required
               ></textarea>
+              <div class="question-image-upload">
+                <label for="question-image-{{ model_num }}-1"
+                  >Attach Image (optional):</label
+                >
+                <input
+                  type="file"
+                  id="question-image-{{ model_num }}-1"
+                  name="question-image-{{ model_num }}-1"
+                  accept="image/*"
+                  class="image-input"
+                />
+              </div>
             </div>
           </div>
 
@@ -94,6 +107,27 @@ endblock %} {% block content %}
         textarea.placeholder = "Enter question...";
         textarea.required = true;
 
+        // Create image upload section
+        const imageUploadDiv = document.createElement("div");
+        imageUploadDiv.className = "question-image-upload";
+
+        const imageLabel = document.createElement("label");
+        imageLabel.setAttribute(
+          "for",
+          `question-image-${modelNum}-${nextQuestionNum}`
+        );
+        imageLabel.textContent = "Attach Image (optional):";
+
+        const imageInput = document.createElement("input");
+        imageInput.type = "file";
+        imageInput.id = `question-image-${modelNum}-${nextQuestionNum}`;
+        imageInput.name = `question-image-${modelNum}-${nextQuestionNum}`;
+        imageInput.accept = "image/*";
+        imageInput.className = "image-input";
+
+        imageUploadDiv.appendChild(imageLabel);
+        imageUploadDiv.appendChild(imageInput);
+
         // Create remove button
         const removeBtn = document.createElement("button");
         removeBtn.type = "button";
@@ -105,6 +139,7 @@ endblock %} {% block content %}
 
         // Add elements to the DOM
         questionItem.appendChild(textarea);
+        questionItem.appendChild(imageUploadDiv);
         questionItem.appendChild(removeBtn);
         questionsContainer.appendChild(questionItem);
 

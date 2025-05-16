@@ -962,6 +962,31 @@ footer {
   border-left: 4px solid #4299e1;
 }
 
+/* Question image styling */
+.question-image-container {
+  padding: 1rem;
+  background-color: #fff;
+  text-align: center;
+  border-bottom: 1px solid var(--grey-color);
+}
+
+.question-image {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.question-image-upload {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.image-input {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   header {

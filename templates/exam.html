@@ -31,6 +31,16 @@ endblock %} {% block head %}
           <div class="question-text">{{ question.question_text }}</div>
         </div>
 
+        {% if question.image_filename %}
+        <div class="question-image-container">
+          <img
+            src="{{ url_for('static', filename='uploads/' + question.image_filename) }}"
+            alt="Question image"
+            class="question-image"
+          />
+        </div>
+        {% endif %}
+
         <div class="answer-editor">
           <textarea
             id="code-editor-{{ question.id }}"

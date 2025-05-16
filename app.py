@@ -9,6 +9,7 @@ import io
 import random
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -112,6 +113,7 @@ def init_db():
             exam_id INTEGER,
             model_id INTEGER,
             question_text TEXT NOT NULL,
+            image_filename TEXT,
             FOREIGN KEY (exam_id) REFERENCES exams (id),
             FOREIGN KEY (model_id) REFERENCES exam_models (id)
         )
@@ -637,11 +639,21 @@ def create_exam():
                 model_id = cursor.lastrowid
 
                 # Insert questions for default model
-                for question in request.form.getlist('question'):
+                questions = request.form.getlist('question')
+                for i, question in enumerate(questions):
                     if question.strip():
+                        # Check if an image was uploaded for this question
+                        image_key = f"question-image-{i+1}"
+                        image_filename = None
+
+                        if image_key in request.files:
+                            image_file = request.files[image_key]
+                            if image_file and image_file.filename:
+                                image_filename = save_image(image_file)
+
                         cursor.execute(
-                            "INSERT INTO questions (exam_id, model_id, question_text) VALUES (?, ?, ?)",
-                            (exam_id, model_id, question)
+                            "INSERT INTO questions (exam_id, model_id, question_text, image_filename) VALUES (?, ?, ?, ?)",
+                            (exam_id, model_id, question, image_filename)
                         )
 
             conn.commit()
@@ -690,9 +702,19 @@ def create_exam_models(exam_id):
                 for key, value in request.form.items():
                     if key.startswith(question_prefix) and value.strip():
                         question_index = key[len(question_prefix):]
+
+                        # Check if an image was uploaded for this question
+                        image_key = f"question-image-{model_num}-{question_index}"
+                        image_filename = None
+
+                        if image_key in request.files:
+                            image_file = request.files[image_key]
+                            if image_file and image_file.filename:
+                                image_filename = save_image(image_file)
+
                         cursor.execute(
-                            "INSERT INTO questions (exam_id, model_id, question_text) VALUES (?, ?, ?)",
-                            (exam_id, model_id, value)
+                            "INSERT INTO questions (exam_id, model_id, question_text, image_filename) VALUES (?, ?, ?, ?)",
+                            (exam_id, model_id, value, image_filename)
                         )
 
             conn.commit()
@@ -1461,6 +1483,37 @@ def export_grades_excel(exam_id):
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+# Helper functions for handling file uploads
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed (images only)"""
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def save_image(file):
+    """Save uploaded image to the uploads folder with a secure name"""
+    if file and allowed_file(file.filename):
+        # Generate a secure filename
+        filename = secure_filename(file.filename)
+        # Add random string to avoid name collisions
+        random_hex = secrets.token_hex(8)
+        _, file_extension = os.path.splitext(filename)
+        secure_name = random_hex + file_extension
+
+        # Create uploads directory if it doesn't exist
+        upload_folder = os.path.join('static', 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
+
+        # Save the file
+        file_path = os.path.join(upload_folder, secure_name)
+        file.save(file_path)
+
+        return secure_name
+    return None
 
 
 if __name__ == '__main__':

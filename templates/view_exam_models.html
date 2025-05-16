@@ -44,7 +44,17 @@ endblock %} {% block content %}
           0 %}
           <ol class="question-list">
             {% for question in model_questions[model.id] %}
-            <li class="question-item">{{ question.question_text }}</li>
+            <li class="question-item">
+              {{ question.question_text }} {% if question.image_filename %}
+              <div class="question-image-container">
+                <img
+                  src="{{ url_for('static', filename='uploads/' + question.image_filename) }}"
+                  alt="Question image"
+                  class="question-image"
+                />
+              </div>
+              {% endif %}
+            </li>
             {% endfor %}
           </ol>
           {% else %}
